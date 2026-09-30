@@ -254,6 +254,9 @@ function renderTask(task) {
 
     const input = document.getElementById('ans');
     input.focus();
+
+    input.addEventListener('paste', e => e.preventDefault());
+
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.repeat) submit(input.value);
     });
@@ -427,6 +430,7 @@ function renderMemoryAnswerPhase(task) {
 
       const input = document.getElementById('ans');
       input.focus();
+      input.addEventListener('paste', e => e.preventDefault());
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.repeat) submit(input.value);
       });
