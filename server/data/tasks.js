@@ -1,3 +1,5 @@
+const WORDS = require('./words.json');
+
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const uid = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -84,6 +86,32 @@ function genSequence(difficulty) {
     question: `Продолжите ряд: ${seq.join(', ')}, ?`,
     answer,
     explanation: pick.mul ? `Каждое число умножается на ${pick.mul}` : `Каждый раз +${pick.d}`
+  };
+}
+
+// ============================================================
+//  WORDLE
+// ============================================================
+function genWordle(difficulty) {
+  const maxAttempts = difficulty === 1 ? 7
+                    : difficulty === 2 ? 6
+                    : 5;
+
+  // Нормализуем Ё → Е, чтобы игрок не гадал, ставить ли точки
+  const raw = WORDS[rand(0, WORDS.length - 1)];
+  const target = raw.toUpperCase().replace(/Ё/g, 'Е');
+  const wordLength = target.length;
+
+  return {
+    id: uid('wordle'),
+    category: 'wordle',
+    difficulty,
+    type: 'wordle',
+    wordLength,
+    maxAttempts,
+    answer: target,
+    question: `Угадайте слово из ${wordLength} букв за ${maxAttempts} попыток`,
+    explanation: `Загаданное слово: ${target}`
   };
 }
 
@@ -259,7 +287,6 @@ function genAges(difficulty) {
 
 // 8. Встреча поездов / машин / велосипедистов
 function genMeeting(difficulty) {
-  // Внимание на род числительного: два поезда, две машины, два велосипедиста
   const subjects = [
     { num: 'Два', many: 'поезда',        verb: 'выехали' },
     { num: 'Две', many: 'машины',        verb: 'выехали' },
@@ -290,7 +317,6 @@ function genMeeting(difficulty) {
 //  Классические задачи (редкая добавка, ~7% выпадений)
 // ============================================================
 const LOGIC_STATIC = [
-  // --- 1 уровень ---
   { difficulty: 1,
     question: 'У Маши 3 яблока, у Пети в 2 раза больше. Сколько всего яблок?',
     options: ['6', '9', '12'], answer: '9',
@@ -306,7 +332,6 @@ const LOGIC_STATIC = [
     options: ['9', '10', '12'], answer: '10',
     explanation: 'Каждое число больше предыдущего на 2' },
 
-  // --- 2 уровень ---
   { difficulty: 2,
     question: 'Продолжите: 1, 1, 2, 3, 5, 8, ?',
     options: ['11', '12', '13', '15'], answer: '13',
@@ -322,7 +347,6 @@ const LOGIC_STATIC = [
     options: ['1', '2', '12'], answer: '12',
     explanation: 'В каждом месяце есть как минимум 28 дней' },
 
-  // --- 3 уровень ---
   { difficulty: 3,
     question: 'Сколько раз в сутки часовая и минутная стрелки совпадают?',
     options: ['20', '22', '24'], answer: '22',
@@ -354,14 +378,11 @@ const LOGIC_STATIC = [
 //  ПАМЯТЬ — шаблонные генераторы
 // ============================================================
 
-
-// 1. Последовательность цифр (можно в обратном порядке)
 function genMemorySequence(difficulty, reverse = false) {
   const len = difficulty === 1 ? 4
             : difficulty === 2 ? rand(5, 6)
             : rand(7, 8);
 
-  // Без подряд идущих одинаковых цифр — иначе трудно воспринимать
   const items = [];
   let prev = -1;
   for (let i = 0; i < len; i++) {
@@ -371,7 +392,7 @@ function genMemorySequence(difficulty, reverse = false) {
     prev = d;
   }
 
-  const duration = 1200 + len * 350; // ~2.6 с для 4, ~4.0 с для 8
+  const duration = 1200 + len * 350;
   const answer = reverse ? [...items].reverse().join('') : items.join('');
 
   return {
@@ -396,7 +417,6 @@ function genMemorySequence(difficulty, reverse = false) {
   };
 }
 
-// 2. Сетка символов: сколько раз встретился конкретный
 function genMemoryGridCount(difficulty) {
   const size = difficulty === 1 ? 3 : 4;
   const uniqueCount = difficulty === 1 ? 3
@@ -406,7 +426,6 @@ function genMemoryGridCount(difficulty) {
   const POOL = ['⭐', '🍎', '🍋', '🍇', '🌸', '🐱', '🐶', '🦊', '🐻', '🎈'];
   const chosen = shuffleArr(POOL).slice(0, uniqueCount);
 
-  // Заполняем сетку, следя, чтобы целевой символ попался 1..половины клеток
   const target = chosen[rand(0, chosen.length - 1)];
   const total = size * size;
   const targetCount = rand(1, Math.min(Math.floor(total / 2), size + 2));
@@ -440,7 +459,6 @@ function genMemoryGridCount(difficulty) {
   };
 }
 
-// 3. Какой символ пропал
 function genMemoryGridMissing(difficulty) {
   const size = difficulty === 1 ? 3 : 4;
   const total = size * size;
@@ -449,7 +467,6 @@ function genMemoryGridMissing(difficulty) {
   const POOL = ['⭐', '🍎', '🍋', '🍇', '🌸', '🐱', '🐶', '🦊', '🐻', '🎈'];
   const chosen = shuffleArr(POOL).slice(0, uniqueCount);
 
-  // Одна фигура — ровно 1 раз (её и уберём), остальные заполняют сетку
   const missing = chosen[0];
   const rest = chosen.slice(1);
   const cells = [missing];
@@ -458,13 +475,11 @@ function genMemoryGridMissing(difficulty) {
   }
   const shuffled = shuffleArr(cells);
 
-  // Показываем ту же сетку с пустой клеткой на месте пропавшей
   const after = [...shuffled];
   after[after.indexOf(missing)] = '';
 
   const duration = 2000 + total * 120;
 
-  // Варианты ответа — все выбранные символы, перемешанные
   const options = shuffleArr(chosen);
 
   return {
@@ -492,16 +507,11 @@ function genMemoryGridMissing(difficulty) {
   };
 }
 
-// Сборщик задачи на память
 function pickMemory(difficulty) {
-  const pool = [genMemorySequence, genMemoryGridCount, genMemoryGridMissing];
-
-  // На сложности 1 — только простая последовательность и счёт
   if (difficulty === 1) {
     return Math.random() < 0.5 ? genMemorySequence(difficulty) : genMemoryGridCount(difficulty);
   }
 
-  // На 2–3 — плюс реверс и «что пропало»
   const r = Math.random();
   if (r < 0.35) return genMemorySequence(difficulty, false);
   if (r < 0.60) return genMemorySequence(difficulty, true);
@@ -513,7 +523,6 @@ function pickMemory(difficulty) {
 //  КОНЦЕНТРАЦИЯ — шаблонные генераторы
 // ============================================================
 
-// 1. Эффект Струпа
 function genStroop(difficulty) {
   const COLORS = [
     { name: 'Красный',    hex: '#e74c3c' },
@@ -526,8 +535,6 @@ function genStroop(difficulty) {
   const optionCount = difficulty === 1 ? 3 : 4;
   const chosen = shuffleArr(COLORS).slice(0, optionCount);
 
-  // word — то, что написано. ink — то, каким цветом написано.
-  // По условию они должны различаться, иначе эффекта Струпа нет.
   const word = chosen[rand(0, chosen.length - 1)];
   let ink;
   do {
@@ -548,7 +555,6 @@ function genStroop(difficulty) {
   };
 }
 
-// 2. Найди отличающийся кружок
 function genFindDifferent(difficulty) {
   const size = difficulty === 1 ? 4 : difficulty === 2 ? 5 : 6;
   const total = size * size;
@@ -556,7 +562,6 @@ function genFindDifferent(difficulty) {
 
   let baseColor, diffColor;
   if (difficulty === 1) {
-    // совсем разные цвета
     const pairs = [
       ['#e74c3c', '#3498db'],
       ['#2ecc71', '#f1c40f'],
@@ -567,11 +572,9 @@ function genFindDifferent(difficulty) {
     baseColor = p[0];
     diffColor = p[1];
   } else if (difficulty === 2) {
-    // похожие оттенки
     baseColor = '#3498db';
     diffColor = '#5dade2';
   } else {
-    // почти не отличаются
     baseColor = '#3498db';
     diffColor = '#3d9bdd';
   }
@@ -593,7 +596,6 @@ function genFindDifferent(difficulty) {
   };
 }
 
-// 3. Сколько раз встречается буква
 function genCountLetter(difficulty) {
   const LEN = difficulty === 1 ? 25 : difficulty === 2 ? 40 : 60;
   const LETTERS = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЫЭЮЯ';
@@ -658,7 +660,6 @@ function pickLogic(difficulty, ctx = {}) {
   const usedStatic = ctx.usedStatic || (ctx.usedStatic = new Set());
   const usedGens   = ctx.usedGenerators || (ctx.usedGenerators = new Set());
 
-  // 1) Редкая статичная классика
   if (Math.random() < STATIC_CHANCE) {
     const pool = LOGIC_STATIC.filter(t =>
       t.difficulty === difficulty && !usedStatic.has(staticKey(t, difficulty))
@@ -679,7 +680,6 @@ function pickLogic(difficulty, ctx = {}) {
     }
   }
 
-  // 2) Шаблонный генератор
   let pool;
   if (difficulty === 1) {
     pool = LOGIC_EASY_GENERATORS;
@@ -707,7 +707,8 @@ const GENERATORS = {
   sequence:      genSequence,
   logic:         pickLogic,
   memory:        pickMemory,
-  concentration: pickConcentration
+  concentration: pickConcentration,
+  wordle:        genWordle
 };
 
 function generateTasks({ category = 'arithmetic', difficulty = 1, count = 10 }) {

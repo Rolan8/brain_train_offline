@@ -2,8 +2,12 @@
   "name": "brain-trainer",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+      "start": "node server/index.js",
+      "dev": "nodemon server/index.js",
+      "build-words": "node scripts/build-words.js"
   },
-  "dependencies": { "express": "^4.19.2" }
+  "dependencies": {
+    "express": "^4.19.2",
+    "russian-words": "^1.0.1"
+  }
 }

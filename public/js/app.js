@@ -6,15 +6,16 @@ const API = '/api/tasks';
 const TIME_PER_TASK = 20;
 const TASK_COUNT = 10;
 const REFILL_THRESHOLD = 2;
-const ADVANCE_DELAY = 1500;   // пауза перед автопереходом (мс)
-const NEXT_FOCUS_DELAY = 250; // задержка фокуса на кнопке «Далее» (мс)
+const ADVANCE_DELAY = 1500;
+const NEXT_FOCUS_DELAY = 250;
 
 const CATEGORIES = [
   { id: 'arithmetic', name: 'Арифметика', icon: '➗' },
   { id: 'sequence',   name: 'Ряды',        icon: '🔢' },
   { id: 'logic',      name: 'Логика',      icon: '🧩' },
   { id: 'memory',     name: 'Память',      icon: '🧠' },
-  { id: 'concentration', name: 'Концентрация', icon: '🎯'}   
+  { id: 'concentration', name: 'Концентрация', icon: '🎯' },
+  { id: 'wordle',     name: 'Слова',       icon: '🔤', endlessOnly: true }  // ← только бесконечный
 ];
 
 const MODES = [
@@ -37,7 +38,8 @@ const state = {
   bestStreak: 0,
   timeLeft: 0,
   timerId: null,
-  locked: false
+  locked: false,
+  _wordleKeyHandler: null
 };
 
 const screen = document.getElementById('screen');
@@ -52,6 +54,9 @@ const setBest = (cat, diff, mode, v) =>
 
 function setStats(text) { statsBar.textContent = text; }
 
+// Нормализация букв: верхний регистр + Ё → Е
+const normalizeWord = (s) => String(s).toUpperCase().replace(/Ё/g, 'Е');
+
 // ---------- API ----------
 async function fetchTasks(count) {
   const res = await fetch(
@@ -60,6 +65,23 @@ async function fetchTasks(count) {
   if (!res.ok) throw new Error('Failed to load tasks');
   const data = await res.json();
   return data.tasks;
+}
+
+// Загрузчик словаря (кэшируется на всё время сессии)
+let wordSetPromise = null;
+
+function loadWords() {
+  if (!wordSetPromise) {
+    wordSetPromise = fetch(`${API}/words`)
+      .then(r => r.json())
+      .then(d => new Set(d.words.map(w => normalizeWord(w))))
+      .catch(e => {
+        console.error('Не удалось загрузить словарь', e);
+        wordSetPromise = null;
+        return new Set();
+      });
+  }
+  return wordSetPromise;
 }
 
 let refillPromise = null;
@@ -75,6 +97,12 @@ function loadMore() {
 // ---------- Меню ----------
 function showMenu() {
   stopTimer();
+
+  if (state._wordleKeyHandler) {
+    document.removeEventListener('keydown', state._wordleKeyHandler);
+    state._wordleKeyHandler = null;
+  }
+
   state.queue = [];
   state.current = null;
   state.locked = false;
@@ -84,6 +112,9 @@ function showMenu() {
   state.streak = 0;
   state.bestStreak = 0;
   setStats('');
+
+  const currentCat = CATEGORIES.find(c => c.id === state.category);
+  const lockTimed = !!(currentCat && currentCat.endlessOnly);
 
   screen.innerHTML = `
     <h1>Выберите тренировку</h1>
@@ -103,14 +134,19 @@ function showMenu() {
 
   const modes = document.getElementById('modes');
   MODES.forEach(m => {
+    const disabled = lockTimed && m.id === 'timed';
     const d = document.createElement('div');
-    d.className = `card${state.mode === m.id ? ' active' : ''}`;
+    d.className = `card${state.mode === m.id ? ' active' : ''}${disabled ? ' disabled' : ''}`;
     d.innerHTML = `
       <div class="icon">${m.icon}</div>
       <div class="name">${m.name}</div>
-      <div class="sub" style="margin:6px 0 0;font-size:12px">${m.desc}</div>
+      <div class="sub" style="margin:6px 0 0;font-size:12px">
+        ${disabled ? 'Недоступно для этой категории' : m.desc}
+      </div>
     `;
-    d.onclick = () => { state.mode = m.id; showMenu(); };
+    if (!disabled) {
+      d.onclick = () => { state.mode = m.id; showMenu(); };
+    }
     modes.appendChild(d);
   });
 
@@ -119,7 +155,14 @@ function showMenu() {
     const d = document.createElement('div');
     d.className = `card${state.category === c.id ? ' active' : ''}`;
     d.innerHTML = `<div class="icon">${c.icon}</div><div class="name">${c.name}</div>`;
-    d.onclick = () => { state.category = c.id; showMenu(); };
+    d.onclick = () => {
+      state.category = c.id;
+      // Для категорий с endlessOnly принудительно включаем бесконечный режим
+      if (c.endlessOnly && state.mode !== 'endless') {
+        state.mode = 'endless';
+      }
+      showMenu();
+    };
     cats.appendChild(d);
   });
 
@@ -142,6 +185,12 @@ function showMenu() {
 
 // ---------- Старт сессии ----------
 async function startGame() {
+  // Подстраховка: если каким-то образом категория Wordle попала в timed-режим
+  const currentCat = CATEGORIES.find(c => c.id === state.category);
+  if (currentCat && currentCat.endlessOnly && state.mode !== 'endless') {
+    state.mode = 'endless';
+  }
+
   screen.innerHTML = `<p class="sub" style="text-align:center">Загрузка…</p>`;
 
   Object.assign(state, {
@@ -193,6 +242,7 @@ function nextTask() {
 // ---------- Рендер задачи ----------
 function renderTask(task) {
   if (task.type === 'memory') return renderMemoryTask(task);
+  if (task.type === 'wordle') return renderWordleTask(task);
 
   state.locked = false;
 
@@ -254,12 +304,10 @@ function renderTask(task) {
 
     const input = document.getElementById('ans');
     input.focus();
-
-    input.addEventListener('paste', e => e.preventDefault());
-
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.repeat) submit(input.value);
     });
+    input.addEventListener('paste', e => e.preventDefault());
     document.getElementById('okBtn').onclick = () => submit(input.value);
   }
 
@@ -288,17 +336,6 @@ function renderGridClick(task, area) {
   area.appendChild(wrap);
 }
 
-function highlightCorrect(task) {
-  if (task.type === 'choice') {
-    document.querySelectorAll('.option').forEach(o => {
-      if (o.textContent === String(task.answer)) o.classList.add('correct');
-    });
-  } else if (task.type === 'grid-click') {
-    const cells = document.querySelectorAll('.click-cell');
-    const idx = Number(task.answer);
-    if (cells[idx]) cells[idx].classList.add('correct');
-  }
-}
 // ---------- Задачи на память ----------
 
 function renderMemoryTask(task) {
@@ -333,7 +370,6 @@ function renderMemoryTask(task) {
 
   document.getElementById('backBtn').onclick = exitToMenu;
 
-  // Обратный отсчёт фазы памяти
   const cdEl = document.getElementById('memCountdown');
   let remaining = Math.ceil(task.memory.duration / 1000);
   if (cdEl) cdEl.textContent = remaining;
@@ -356,13 +392,13 @@ function renderMemoryContent(mem) {
     return `<div class="memory-digits">${mem.items.join(' ')}</div>`;
   }
   if (mem.kind === 'grid') {
-  const cells = mem.cells
-    .map(c => `<div class="memory-cell${c ? '' : ' empty'}">${c || ''}</div>`)
-    .join('');
-  return `<div class="memory-grid" style="grid-template-columns:repeat(${mem.size},1fr)">
-    ${cells}
-  </div>`;
-}
+    const cells = mem.cells
+      .map(c => `<div class="memory-cell${c ? '' : ' empty'}">${c || ''}</div>`)
+      .join('');
+    return `<div class="memory-grid" style="grid-template-columns:repeat(${mem.size},1fr)">
+      ${cells}
+    </div>`;
+  }
   return '';
 }
 
@@ -371,8 +407,6 @@ function renderMemoryAnswerPhase(task) {
   const slot  = document.getElementById('memoryAnswerSlot');
   if (!phase || !slot) return;
 
-  // 1) Если есть afterMemory — заменяем содержимое сетки НА МЕСТЕ,
-  //    чтобы пользователь сразу увидел, какая клетка опустела
   if (task.afterMemory) {
     const label   = phase.querySelector('.memory-label');
     const cd      = phase.querySelector('.memory-countdown');
@@ -382,7 +416,6 @@ function renderMemoryAnswerPhase(task) {
     if (cd)      cd.style.display = 'none';
     if (content) content.innerHTML = renderMemoryContent(task.afterMemory);
 
-    // Короткая вспышка на пустой клетке — притягиваем взгляд
     const empty = phase.querySelector('.memory-cell.empty');
     if (empty) {
       empty.classList.add('flash');
@@ -390,7 +423,6 @@ function renderMemoryAnswerPhase(task) {
     }
   }
 
-  // 2) Даём зафиксировать изменение, затем прячем и спрашиваем
   const AFTER_VISIBLE = task.afterMemory ? 1800 : 400;
 
   setTimeout(() => {
@@ -430,14 +462,13 @@ function renderMemoryAnswerPhase(task) {
 
       const input = document.getElementById('ans');
       input.focus();
-      input.addEventListener('paste', e => e.preventDefault());
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.repeat) submit(input.value);
       });
+      input.addEventListener('paste', e => e.preventDefault());
       document.getElementById('okBtn').onclick = () => submit(input.value);
     }
 
-    // В режиме «на время» таймер стартует только теперь
     if (state.mode === 'timed') {
       const bar = document.getElementById('timerBar');
       if (bar) {
@@ -447,6 +478,220 @@ function renderMemoryAnswerPhase(task) {
       startTimer();
     }
   }, AFTER_VISIBLE);
+}
+
+// ---------- Wordle ----------
+function renderWordleTask(task) {
+  stopTimer();
+  state.locked = false;
+
+  if (state._wordleKeyHandler) {
+    document.removeEventListener('keydown', state._wordleKeyHandler);
+    state._wordleKeyHandler = null;
+  }
+
+  const LEN = task.wordLength;
+  const MAX = task.maxAttempts;
+  const TARGET = normalizeWord(task.answer);
+
+  const attempts = [];
+  let currentGuess = '';
+  let finished = false;
+
+  screen.innerHTML = `
+    <div class="task-header">
+      <button class="btn-back" id="backBtn">← В меню</button>
+      <span class="task-counter">Попыток: <span id="attemptsLeft">${MAX}</span></span>
+    </div>
+    <p class="sub" style="text-align:center">${task.question}</p>
+    <div class="wordle-grid" id="wordleGrid"></div>
+    <div class="wordle-keyboard" id="wordleKeyboard"></div>
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  document.getElementById('backBtn').onclick = exitToMenu;
+
+  const gridEl = document.getElementById('wordleGrid');
+  const kbEl = document.getElementById('wordleKeyboard');
+  const feedback = document.getElementById('feedback');
+  const attemptsLeftEl = document.getElementById('attemptsLeft');
+
+  const CELL_SIZE = 56;
+  const CELL_GAP  = 6;
+  gridEl.style.maxWidth = `${LEN * CELL_SIZE + (LEN - 1) * CELL_GAP}px`;
+
+  for (let r = 0; r < MAX; r++) {
+    const row = document.createElement('div');
+    row.className = 'wordle-row';
+    row.style.gridTemplateColumns = `repeat(${LEN}, 1fr)`;
+    for (let c = 0; c < LEN; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'wordle-cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      row.appendChild(cell);
+    }
+    gridEl.appendChild(row);
+  }
+
+  const KB_ROWS = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮЁ'];
+  KB_ROWS.forEach(letters => {
+    const row = document.createElement('div');
+    row.className = 'wordle-kb-row';
+    letters.split('').forEach(letter => {
+      const key = document.createElement('button');
+      key.className = 'wordle-key';
+      key.textContent = letter;
+      key.dataset.key = letter;
+      key.onclick = () => handleLetter(letter);
+      row.appendChild(key);
+    });
+    kbEl.appendChild(row);
+  });
+
+  const ctrlRow = document.createElement('div');
+  ctrlRow.className = 'wordle-kb-row';
+  const enterBtn = document.createElement('button');
+  enterBtn.className = 'wordle-key wide';
+  enterBtn.textContent = 'Ввод';
+  enterBtn.onclick = handleEnter;
+  const backBtn2 = document.createElement('button');
+  backBtn2.className = 'wordle-key wide';
+  backBtn2.textContent = '⌫';
+  backBtn2.onclick = handleBackspace;
+  ctrlRow.appendChild(enterBtn);
+  ctrlRow.appendChild(backBtn2);
+  kbEl.appendChild(ctrlRow);
+
+  function updateCurrentRow() {
+    for (let c = 0; c < LEN; c++) {
+      const cell = gridEl.querySelector(
+        `.wordle-cell[data-row="${attempts.length}"][data-col="${c}"]`
+      );
+      if (cell) cell.textContent = currentGuess[c] || '';
+    }
+  }
+
+  function handleLetter(letter) {
+    if (finished || currentGuess.length >= LEN) return;
+    currentGuess += letter;
+    updateCurrentRow();
+  }
+
+  function handleBackspace() {
+    if (finished) return;
+    currentGuess = currentGuess.slice(0, -1);
+    updateCurrentRow();
+  }
+
+  async function handleEnter() {
+    if (finished) return;
+
+    if (currentGuess.length !== LEN) {
+      feedback.className = 'feedback err';
+      feedback.textContent = `Нужно слово из ${LEN} букв`;
+      return;
+    }
+
+    const guess = normalizeWord(currentGuess);
+
+    const words = await loadWords();
+    if (words.size > 0 && !words.has(guess)) {
+      feedback.className = 'feedback err';
+      feedback.textContent = `Слова «${currentGuess}» нет в словаре`;
+      return;
+    }
+
+    feedback.textContent = '';
+    attempts.push(currentGuess);
+
+    const states = new Array(LEN).fill('absent');
+    const remaining = TARGET.split('');
+    for (let i = 0; i < LEN; i++) {
+      if (guess[i] === TARGET[i]) { states[i] = 'correct'; remaining[i] = null; }
+    }
+    for (let i = 0; i < LEN; i++) {
+      if (states[i] === 'correct') continue;
+      const idx = remaining.indexOf(guess[i]);
+      if (idx !== -1) { states[i] = 'present'; remaining[idx] = null; }
+    }
+
+    for (let c = 0; c < LEN; c++) {
+      const cell = gridEl.querySelector(
+        `.wordle-cell[data-row="${attempts.length - 1}"][data-col="${c}"]`
+      );
+      cell.textContent = currentGuess[c];
+      cell.classList.add(states[c]);
+    }
+
+    const pr = { correct: 3, present: 2, absent: 1 };
+    for (let c = 0; c < LEN; c++) {
+      const key = kbEl.querySelector(`.wordle-key[data-key="${guess[c]}"]`);
+      if (!key) continue;
+      const cur = key.dataset.state;
+      if (!cur || pr[states[c]] > pr[cur]) {
+        key.dataset.state = states[c];
+        key.classList.remove('correct', 'present', 'absent');
+        key.classList.add(states[c]);
+      }
+    }
+
+    attemptsLeftEl.textContent = MAX - attempts.length;
+
+    if (guess === TARGET) {
+      finished = true;
+      setTimeout(() => finishWordle(true), 300);
+      return;
+    }
+
+    if (attempts.length >= MAX) {
+      finished = true;
+      setTimeout(() => finishWordle(false), 300);
+      return;
+    }
+
+    currentGuess = '';
+  }
+
+  function finishWordle(won) {
+    if (state._wordleKeyHandler) {
+      document.removeEventListener('keydown', state._wordleKeyHandler);
+      state._wordleKeyHandler = null;
+    }
+
+    state.answered++;
+    if (won) {
+      state.correct++;
+      state.streak++;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+      const points = 10 * task.difficulty * 2;
+      state.score += points;
+      feedback.className = 'feedback ok';
+      feedback.textContent = `Угадали за ${attempts.length} попыток! +${points} очков`;
+    } else {
+      state.streak = 0;
+      feedback.className = 'feedback err';
+      feedback.textContent = `Не угадали. Слово: ${TARGET}`;
+    }
+    setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
+
+    // Всегда показываем кнопку «Далее» — без автоперехода
+    showNextButton();
+  }
+
+  const onKeyDown = (e) => {
+    if (finished) return;
+    if (e.key === 'Enter') { e.preventDefault(); handleEnter(); }
+    else if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); }
+    else {
+      const k = e.key.toUpperCase();
+      if (k.length === 1 && /[А-ЯЁ]/.test(k)) handleLetter(k);
+    }
+  };
+  document.addEventListener('keydown', onKeyDown);
+  state._wordleKeyHandler = onKeyDown;
+
+  setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 }
 
 // ---------- Таймер ----------
@@ -476,18 +721,17 @@ function submit(value, btnEl) {
   state.locked = true;
   stopTimer();
 
-  // Снимаем фокус с input, чтобы автоповтор Enter никуда не прилетел
   if (document.activeElement && document.activeElement.blur) {
     document.activeElement.blur();
   }
 
   const task = state.current;
   const norm = v =>
-  String(v ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/,/g, '.')
-    .replace(/\s+/g, ''); 
+    String(v ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/,/g, '.')
+      .replace(/\s+/g, '');
   const isCorrect = value !== null && norm(value) === norm(task.answer);
 
   state.answered++;
@@ -516,7 +760,6 @@ function submit(value, btnEl) {
       : `Неверно. Ответ: ${task.answer} — ${task.explanation}`;
     highlightCorrect(task);
 
-    // В бесконечном режиме даём время прочитать объяснение
     if (state.mode === 'endless') {
       autoAdvance = false;
       showNextButton();
@@ -536,8 +779,13 @@ function submit(value, btnEl) {
 
 function showNextButton() {
   const feedback = document.getElementById('feedback');
+  if (!feedback) return;
+
+  // Если кнопка уже есть — не дублируем
+  if (feedback.querySelector('.next-btn-wrap')) return;
 
   const wrap = document.createElement('div');
+  wrap.className = 'next-btn-wrap';
   wrap.style.marginTop = '18px';
 
   const btn = document.createElement('button');
@@ -551,22 +799,30 @@ function showNextButton() {
   wrap.appendChild(btn);
   feedback.appendChild(wrap);
 
-  // Фокус — с небольшой задержкой.
-  // Так второй Enter (или автоповтор клавиши) не «промотает» задачу вперёд.
   setTimeout(() => btn.focus(), NEXT_FOCUS_DELAY);
 }
 
 function highlightCorrect(task) {
-  if (task.type !== 'choice') return;
-  document.querySelectorAll('.option').forEach(o => {
-    if (o.textContent === String(task.answer)) o.classList.add('correct');
-  });
+  if (task.type === 'choice') {
+    document.querySelectorAll('.option').forEach(o => {
+      if (o.textContent === String(task.answer)) o.classList.add('correct');
+    });
+  } else if (task.type === 'grid-click') {
+    const cells = document.querySelectorAll('.click-cell');
+    const idx = Number(task.answer);
+    if (cells[idx]) cells[idx].classList.add('correct');
+  }
 }
 
 // ---------- Итоги ----------
 function endGame() {
   stopTimer();
   state.current = null;
+
+  if (state._wordleKeyHandler) {
+    document.removeEventListener('keydown', state._wordleKeyHandler);
+    state._wordleKeyHandler = null;
+  }
 
   if (state.answered > 0) {
     setBest(state.category, state.difficulty, state.mode, state.score);
@@ -633,5 +889,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ---------- Старт ----------
+// ---------- Прогрев словаря и старт ----------
+loadWords();
 showMenu();

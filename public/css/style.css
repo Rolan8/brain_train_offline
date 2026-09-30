@@ -41,6 +41,15 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .card .icon { font-size: 24px; }
 .card .name { margin-top: 8px; font-weight: 600; }
 
+/* Заблокированная карточка (например, «На время» для категории «Слова») */
+.card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-color: #262c4d;
+  transform: none;
+}
+
 .btn {
   background: var(--accent);
   color: #fff;
@@ -103,7 +112,12 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .feedback.ok { color: var(--ok); }
 .feedback.err { color: var(--err); }
 
-.timer { font-variant-numeric: tabular-nums; color: var(--muted); text-align: center; margin-bottom: 10px; }
+.timer {
+  text-align: center;
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
 
 .result { text-align: center; }
 .result .score { font-size: 56px; font-weight: 800; margin: 12px 0; }
@@ -137,11 +151,13 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   border-color: var(--accent);
 }
 
-.timer {
-  text-align: center;
-  color: var(--muted);
-  margin-bottom: 12px;
-  font-variant-numeric: tabular-nums;
+.timer.idle {
+  opacity: 0.5;
+}
+
+.timer.active {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .card .sub { color: var(--muted);}
@@ -199,22 +215,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   background: #232947;
   border-radius: 10px;
   min-height: 48px;
-}
-
-.timer {
-  text-align: center;
-  color: var(--muted);
-  margin-bottom: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.timer.idle {
-  opacity: 0.5;
-}
-
-.timer.active {
-  color: var(--accent);
-  font-weight: 600;
 }
 
 .memory-cell.empty {
@@ -284,3 +284,71 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   outline: 3px solid var(--err);
   outline-offset: -3px;
 }
+
+/* ===== WORDLE ===== */
+.wordle-grid {
+  display: grid;
+  gap: 6px;
+  margin: 0 auto 20px;
+  max-width: 100%;
+}
+
+.wordle-row {
+  display: grid;
+  /* grid-template-columns задаётся из JS: repeat(LEN, 1fr) */
+  gap: 6px;
+}
+
+.wordle-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  background: var(--card);
+  border: 2px solid #2b3260;
+  border-radius: 8px;
+  text-transform: uppercase;
+  transition: .15s;
+}
+
+.wordle-cell.correct { background: #34d399; border-color: #34d399; color: #0f1220; }
+.wordle-cell.present { background: #f1c40f; border-color: #f1c40f; color: #0f1220; }
+.wordle-cell.absent  { background: #2b3260; border-color: #2b3260; color: var(--muted); }
+
+.wordle-keyboard {
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.wordle-kb-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.wordle-key {
+  flex: 1;
+  min-width: 28px;
+  padding: 10px 4px;
+  background: #2b3260;
+  color: var(--text);
+  border: 0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .12s;
+  text-transform: uppercase;
+}
+
+.wordle-key:hover { filter: brightness(1.2); }
+
+.wordle-key.wide { flex: 2; font-size: 13px; }
+
+.wordle-key.correct { background: #34d399; color: #0f1220; }
+.wordle-key.present { background: #f1c40f; color: #0f1220; }
+.wordle-key.absent  { background: #1a1f36; color: var(--muted); }
