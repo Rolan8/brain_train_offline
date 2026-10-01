@@ -116,6 +116,49 @@ function genWordle(difficulty) {
 }
 
 // ============================================================
+//  МАТЕМАТИЧЕСКАЯ СЕТКА (MATH GRID)
+// ============================================================
+function genMathGrid(difficulty) {
+  // 25 чисел 1..25, перемешанных для текущего раунда
+  const numbers = shuffleArr(Array.from({ length: 25 }, (_, i) => i + 1));
+  const valuesSet = new Set(numbers);
+
+  // Стартовая цель: сумма 2–3 клеток, которая НЕ равна ни одной клетке по отдельности
+  let target = null;
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const count = difficulty === 1 ? 2 : rand(2, 3);
+    const temp = [...numbers];
+    let sum = 0;
+    for (let i = 0; i < count; i++) {
+      sum += temp.splice(rand(0, temp.length - 1), 1)[0];
+    }
+    if (!valuesSet.has(sum)) {
+      target = sum;
+      break;
+    }
+  }
+
+  // Fallback: сумма двух наибольших всегда > максимума (25), значит не равна ни одной клетке
+  if (target === null) {
+    const sortedDesc = [...numbers].sort((a, b) => b - a);
+    target = sortedDesc[0] + sortedDesc[1];
+  }
+
+  return {
+    id: uid('math-grid'),
+    category: 'math_grid',
+    difficulty,
+    type: 'math_grid',
+    grid: numbers,
+    target,
+    question: `Получи число ${target}, складывая числа из сетки`,
+    answer: target,
+    explanation: `Закрасьте все клетки, собирая целевые суммы из оставшихся чисел`
+  };
+}
+
+// ============================================================
 //  ЛОГИКА — шаблонные генераторы
 // ============================================================
 
@@ -541,17 +584,48 @@ function genStroop(difficulty) {
     ink = chosen[rand(0, chosen.length - 1)];
   } while (ink.name === word.name);
 
+  // Режим определяется ВИЗУАЛЬНЫМ СИГНАЛОМ:
+  //   'ink'     → 👁  — кликнуть на цвет ЧЕРНИЛ (чем написано слово)
+  //   'meaning' → 💬  — кликнуть на цвет, который ОБОЗНАЧАЕТ слово
+  const mode = Math.random() < 0.5 ? 'ink' : 'meaning';
+  const isInk = mode === 'ink';
+
+  const answer = isInk ? ink.name : word.name;
+
+  const signalIcon  = isInk ? '👁' : '💬';
+  const signalText  = isInk ? 'ЦВЕТ ЧЕРНИЛ' : 'ЗНАЧЕНИЕ СЛОВА';
+  const signalClass = isInk ? 'signal-ink' : 'signal-meaning';
+
+  // Вся визуальная часть собирается здесь, чтобы клиент не требовал правок:
+  //   1) бейдж-сигнал с иконкой (какой тип задания)
+  //   2) само цветное слово
+  const questionHtml = `
+    <div class="stroop-signal ${signalClass}">
+      <span class="stroop-signal-icon">${signalIcon}</span>
+      <span class="stroop-signal-text">${signalText}</span>
+    </div>
+    <div class="question" style="color:${ink.hex};margin-bottom:18px">
+      ${word.name.toUpperCase()}
+    </div>
+  `;
+
+  const explanation = isInk
+    ? `Слово «${word.name.toUpperCase()}» написано цветом «${ink.name}»`
+    : `Слово «${word.name.toUpperCase()}» обозначает цвет «${word.name}», ` +
+      `а написано оно цветом «${ink.name}» — это ловушка`;
+
   return {
     id: uid('conc-stroop'),
     category: 'concentration',
     difficulty,
     type: 'choice',
+    // question/questionColor — на случай фолбэка, если questionHtml не отрисуется
     question: word.name.toUpperCase(),
     questionColor: ink.hex,
-    questionHint: 'Кликните на ЦВЕТ текста, а не на само слово',
+    questionHtml,
     options: shuffleArr(chosen.map(c => c.name)),
-    answer: ink.name,
-    explanation: `Слово «${word.name.toUpperCase()}» написано цветом «${ink.name}»`
+    answer,
+    explanation
   };
 }
 
@@ -708,7 +782,19 @@ const GENERATORS = {
   logic:         pickLogic,
   memory:        pickMemory,
   concentration: pickConcentration,
-  wordle:        genWordle
+  wordle:        genWordle,
+  math_grid:     genMathGrid        // ← новая игра
+};
+
+// Русские названия для отображения в интерфейсе
+const CATEGORY_NAMES = {
+  arithmetic:    'Арифметика',
+  sequence:      'Ряды',
+  logic:         'Логика',
+  memory:        'Память',
+  concentration: 'Концентрация',
+  wordle:        'Слова',
+  math_grid:     'Мат-сетка'
 };
 
 function generateTasks({ category = 'arithmetic', difficulty = 1, count = 10 }) {
@@ -728,4 +814,8 @@ function generateTasks({ category = 'arithmetic', difficulty = 1, count = 10 }) 
   return out;
 }
 
-module.exports = { generateTasks, CATEGORIES: Object.keys(GENERATORS) };
+module.exports = {
+  generateTasks,
+  CATEGORIES: Object.keys(GENERATORS),
+  CATEGORY_NAMES
+};

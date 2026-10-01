@@ -10,12 +10,13 @@ const ADVANCE_DELAY = 1500;
 const NEXT_FOCUS_DELAY = 250;
 
 const CATEGORIES = [
-  { id: 'arithmetic', name: 'Арифметика', icon: '➗' },
-  { id: 'sequence',   name: 'Ряды',        icon: '🔢' },
-  { id: 'logic',      name: 'Логика',      icon: '🧩' },
-  { id: 'memory',     name: 'Память',      icon: '🧠' },
-  { id: 'concentration', name: 'Концентрация', icon: '🎯' },
-  { id: 'wordle',     name: 'Слова',       icon: '🔤', endlessOnly: true }  // ← только бесконечный
+  { id: 'arithmetic',    name: 'Арифметика',    icon: '➗' },
+  { id: 'sequence',      name: 'Ряды',          icon: '🔢' },
+  { id: 'logic',         name: 'Логика',        icon: '🧩' },
+  { id: 'memory',        name: 'Память',        icon: '🧠' },
+  { id: 'concentration', name: 'Концентрация',  icon: '🎯' },
+  { id: 'wordle',        name: 'Слова',         icon: '🔤', endlessOnly: true },
+  { id: 'math_grid',     name: 'Мат-сетка', icon: '🎲', endlessOnly: true }
 ];
 
 const MODES = [
@@ -185,7 +186,7 @@ function showMenu() {
 
 // ---------- Старт сессии ----------
 async function startGame() {
-  // Подстраховка: если каким-то образом категория Wordle попала в timed-режим
+  // Подстраховка: если каким-то образом категория Wordle/MathGrid попала в timed-режим
   const currentCat = CATEGORIES.find(c => c.id === state.category);
   if (currentCat && currentCat.endlessOnly && state.mode !== 'endless') {
     state.mode = 'endless';
@@ -241,8 +242,9 @@ function nextTask() {
 
 // ---------- Рендер задачи ----------
 function renderTask(task) {
-  if (task.type === 'memory') return renderMemoryTask(task);
-  if (task.type === 'wordle') return renderWordleTask(task);
+  if (task.type === 'memory')   return renderMemoryTask(task);
+  if (task.type === 'wordle')   return renderWordleTask(task);
+  if (task.type === 'math_grid') return renderMathGridTask(task);
 
   state.locked = false;
 
@@ -478,6 +480,192 @@ function renderMemoryAnswerPhase(task) {
       startTimer();
     }
   }, AFTER_VISIBLE);
+}
+
+// ---------- Math Grid ----------
+
+function renderMathGridTask(task) {
+  stopTimer();
+  state.locked = false;
+
+  const lockedSet   = new Set();
+  const selectedSet = new Set();
+  let currentTarget = task.target;
+  let currentSum    = 0;
+  let finished      = false;
+
+  const CELLS = task.grid;
+  const TOTAL = CELLS.length;
+  const showSum = task.difficulty === 1;
+  const headClass = showSum ? 'mg-row-head' : 'mg-row-head mg-row-head--nosum';
+
+  screen.innerHTML = `
+    <div class="task-header">
+      <button class="btn-back" id="backBtn" title="Выйти в меню">← В меню</button>
+      <span class="task-counter">Собрано: <span id="mgLocked">0</span> / ${TOTAL}</span>
+    </div>
+
+    <div class="mg-table" id="mgTable">
+      <div class="${headClass}">
+        <div class="mg-head-title">
+          Получи число <span class="mg-target-inline" id="mgTarget">${currentTarget}</span>
+        </div>
+        ${showSum ? `<div class="mg-head-sum" id="mgSum">0</div>` : ''}
+      </div>
+      <div class="mg-row-grid" id="mathGrid"></div>
+    </div>
+
+    <div class="math-grid-controls">
+      <button class="btn ghost" id="mgReset">Сброс хода</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  document.getElementById('backBtn').onclick = exitToMenu;
+
+  const gridEl        = document.getElementById('mathGrid');
+  const targetEl      = document.getElementById('mgTarget');
+  const sumEl         = document.getElementById('mgSum');
+  const lockedCountEl = document.getElementById('mgLocked');
+  const feedback      = document.getElementById('feedback');
+
+  CELLS.forEach((num, i) => {
+    const b = document.createElement('button');
+    b.className = 'mg-cell';
+    b.type = 'button';
+    b.textContent = num;
+    b.dataset.index = i;
+    b.onclick = () => onCellClick(i, b);
+    gridEl.appendChild(b);
+  });
+
+  const cellEls = Array.from(gridEl.children);
+
+  function updateUI() {
+    targetEl.textContent = currentTarget;
+    if (sumEl) sumEl.textContent = currentSum;
+    lockedCountEl.textContent = lockedSet.size;
+
+    cellEls.forEach((el, i) => {
+      el.classList.toggle('locked',   lockedSet.has(i));
+      el.classList.toggle('selected', selectedSet.has(i));
+      el.disabled = lockedSet.has(i);
+    });
+  }
+
+  function finalizeVictory() {
+    finished = true;
+    cellEls.forEach((_, i) => {
+      if (!lockedSet.has(i)) lockedSet.add(i);
+    });
+    updateUI();
+
+    state.answered++;
+    state.correct++;
+    state.streak++;
+    state.bestStreak = Math.max(state.bestStreak, state.streak);
+
+    const bonus = 15 * task.difficulty;
+    state.score += bonus;
+    setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
+
+    feedback.className = 'feedback ok';
+    feedback.textContent = `🏆 Победа! Бонус +${bonus} очков`;
+    showNextButton();
+  }
+
+  // Все возможные суммы из 2–3 оставшихся клеток, не совпадающие
+  // ни с одной оставшейся клеткой по отдельности.
+  function collectValidTargets() {
+    const remaining = [];
+    cellEls.forEach((_, i) => {
+      if (!lockedSet.has(i)) remaining.push({ i, v: CELLS[i] });
+    });
+
+    const valuesSet = new Set(remaining.map(x => x.v));
+    const candidates = [];
+    const n = remaining.length;
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const s2 = remaining[i].v + remaining[j].v;
+        if (!valuesSet.has(s2)) candidates.push(s2);
+
+        for (let k = j + 1; k < n; k++) {
+          const s3 = s2 + remaining[k].v;
+          if (!valuesSet.has(s3)) candidates.push(s3);
+        }
+      }
+    }
+    return { remaining, candidates };
+  }
+
+  function generateNewTarget() {
+    const { candidates } = collectValidTargets();
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function onCellClick(index, el) {
+    if (finished) return;
+    if (lockedSet.has(index)) return;
+    if (selectedSet.has(index)) return;
+
+    const val = CELLS[index];
+
+    if (currentSum + val > currentTarget) {
+      el.classList.add('shake');
+      setTimeout(() => el.classList.remove('shake'), 320);
+      return;
+    }
+
+    currentSum += val;
+    selectedSet.add(index);
+    updateUI();
+
+    if (currentSum !== currentTarget) return;
+
+    // Раунд собран
+    selectedSet.forEach(i => lockedSet.add(i));
+    selectedSet.clear();
+
+    const points = 3 * task.difficulty;
+    state.score += points;
+    setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
+
+    feedback.className = 'feedback ok';
+    feedback.textContent = `+${points} очков · убрано ${lockedSet.size} из ${TOTAL}`;
+
+    // Если осталось 0 или 1 клетка — победа сразу
+    const { remaining } = collectValidTargets();
+    if (remaining.length <= 1) {
+      finalizeVictory();
+      return;
+    }
+
+    // Иначе — ищем новую цель из валидных комбинаций
+    const nextTarget = generateNewTarget();
+    if (nextTarget === null) {
+      // Нет ни одной достижимой цели — не даём игроку застрять,
+      // автоматически завершаем партию победой
+      finalizeVictory();
+      return;
+    }
+
+    currentTarget = nextTarget;
+    currentSum = 0;
+    updateUI();
+  }
+
+  document.getElementById('mgReset').onclick = () => {
+    if (finished) return;
+    selectedSet.clear();
+    currentSum = 0;
+    updateUI();
+  };
+
+  updateUI();
+  setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 }
 
 // ---------- Wordle ----------

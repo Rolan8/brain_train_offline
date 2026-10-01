@@ -352,3 +352,179 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .wordle-key.correct { background: #34d399; color: #0f1220; }
 .wordle-key.present { background: #f1c40f; color: #0f1220; }
 .wordle-key.absent  { background: #1a1f36; color: var(--muted); }
+
+/* ============================================================
+   MATH GRID — таблица в стиле классической головоломки
+   ============================================================ */
+
+.mg-table {
+  max-width: 460px;
+  margin: 12px auto 18px;
+  border: 1.5px solid #2b3260;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+/* Шапка таблицы: цель + текущая сумма */
+.mg-row-head {
+  display: grid;
+  grid-template-columns: 4fr 1fr;
+  border-bottom: 1.5px solid #2b3260;
+}
+
+.mg-head-title {
+  padding: 14px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-right: 1.5px solid #2b3260;
+}
+
+.mg-target-inline {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ok);
+}
+
+.mg-head-sum {
+  padding: 14px 6px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+/* Сетка 5×5 — общие линии между клетками */
+.mg-row-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: #2b3260;   /* цвет линий между клетками */
+  gap: 1.5px;            /* толщина линий */
+}
+
+.mg-cell {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 20px;
+  font-weight: 600;
+  font-family: inherit;
+
+  background: var(--card);
+  color: var(--text);
+
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition: background-color 0.12s, color 0.12s, transform 0.1s;
+}
+
+.mg-cell:hover:not(:disabled):not(.selected):not(.locked) {
+  background: #232947;
+}
+
+.mg-cell.selected {
+  background: #f1c40f;
+  color: #0f1220;
+  font-weight: 800;
+}
+
+.mg-cell.locked {
+  background: var(--ok);
+  color: #0f1220;
+  font-weight: 800;
+  cursor: not-allowed;
+}
+
+.mg-cell.shake {
+  animation: mg-shake 0.3s ease;
+}
+
+@keyframes mg-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  50%      { transform: translateX(5px); }
+  75%      { transform: translateX(-3px); }
+}
+
+/* Кнопка «Сброс хода» под таблицей */
+.math-grid-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.math-grid-controls .btn {
+  max-width: 240px;
+}
+
+/* Шапка Math Grid без отображения суммы (средний и сложный уровни) */
+.mg-row-head--nosum {
+  grid-template-columns: 1fr;
+}
+.mg-row-head--nosum .mg-head-title {
+  border-right: none;
+}
+
+/* ===== STROOP — визуальный сигнал-бейдж ===== */
+
+.stroop-signal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  width: fit-content;
+  margin: 4px auto 16px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  animation: stroopSignalIn 0.3s ease;
+}
+
+.stroop-signal-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.stroop-signal-text {
+  font-size: 13px;
+}
+
+.stroop-signal.signal-ink {
+  color: #6c8cff;
+  border-color: #6c8cff;
+  background: rgba(108, 140, 255, 0.12);
+}
+
+.stroop-signal.signal-meaning {
+  color: #f1c40f;
+  border-color: #f1c40f;
+  background: rgba(241, 196, 15, 0.12);
+}
+
+@keyframes stroopSignalIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* В timed-режиме таймер уже отвлекает — сделаем сигнал чуть заметнее */
+.stroop-signal .stroop-signal-icon {
+  filter: drop-shadow(0 0 6px currentColor);
+}

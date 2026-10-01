@@ -1,46 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const { generateTasks } = require('../data/tasks');
+const words = require('../data/words.json');
 
-const { generateTasks, CATEGORIES } = require('../data/tasks');
-const WORDS = require('../data/words.json');
-const russianWords = require('russian-words');
-
-// Набор длин берём из words.json — какие слова загадываем, такие и разрешаем вводить
-const LENGTHS = new Set(WORDS.map(w => w.length));
-
-// Большой словарь для проверки: russian-words, нормализованный Ё → Е,
-// отфильтрованный по длинам из words.json
-const VALID_WORDS = new Set(
-  russianWords
-    .map(w => w.toUpperCase().replace(/Ё/g, 'Е'))
-    .filter(w => LENGTHS.has(w.length))
-);
-
-// ---------- Роуты ----------
-
-// Список категорий
+// Получить список доступных категорий
 router.get('/categories', (req, res) => {
-  res.json({ categories: CATEGORIES });
+  const categories = [
+    { id: 'arithmetic', name: 'Арифметика' },
+    { id: 'sequence', name: 'Ряды' },
+    { id: 'logic', name: 'Логика' },
+    { id: 'memory', name: 'Память' },
+    { id: 'concentration', name: 'Концентрация' },
+    { id: 'wordle', name: 'Слова' },
+    { id: 'math_grid', name: 'Математическая сетка' } // Новая категория
+  ];
+  res.json(categories);
+});
+
+// Получить слова для Wordle
+router.get('/words', (req, res) => {
+  res.json(words);
 });
 
 // Генерация задач
 router.get('/', (req, res) => {
-  const { category = 'arithmetic', difficulty = 1, count = 10 } = req.query;
+  const { category, difficulty = 1, count = 10 } = req.query;
+  
   try {
     const tasks = generateTasks({
       category,
-      difficulty: Number(difficulty),
-      count: Number(count)
+      difficulty: parseInt(difficulty),
+      count: parseInt(count)
     });
     res.json({ tasks });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-});
-
-// Словарь для клиентской проверки Wordle
-router.get('/words', (req, res) => {
-  res.json({ words: [...VALID_WORDS] });
 });
 
 module.exports = router;
