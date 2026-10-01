@@ -1,3 +1,7 @@
+// const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+// const TIME_PER_TASK = isMobile ? 30 : 20;
+// const TASK_COUNT = 10;
+
 // ============================================================
 //  BrainTrainer — клиентская логика
 // ============================================================
@@ -10,13 +14,13 @@ const ADVANCE_DELAY = 1500;
 const NEXT_FOCUS_DELAY = 250;
 
 const CATEGORIES = [
-  { id: 'arithmetic',    name: 'Арифметика',    icon: '➗' },
-  { id: 'sequence',      name: 'Ряды',          icon: '🔢' },
-  { id: 'logic',         name: 'Логика',        icon: '🧩' },
+  { id: 'math_grid',     name: 'Мат-сетка',     icon: '🎲', endlessOnly: true },
+  { id: 'wordle',        name: 'Слова',         icon: '🔤', endlessOnly: true },
   { id: 'memory',        name: 'Память',        icon: '🧠' },
   { id: 'concentration', name: 'Концентрация',  icon: '🎯' },
-  { id: 'wordle',        name: 'Слова',         icon: '🔤', endlessOnly: true },
-  { id: 'math_grid',     name: 'Мат-сетка', icon: '🎲', endlessOnly: true }
+  { id: 'arithmetic',    name: 'Арифметика',    icon: '➗' },
+  { id: 'logic',         name: 'Логика',        icon: '🧩' },
+  { id: 'sequence',      name: 'Ряды',          icon: '🔢' }
 ];
 
 const MODES = [
@@ -1042,14 +1046,70 @@ function endGame() {
   document.getElementById('menu').onclick = showMenu;
 }
 
+
+// ---------- Модальное окно подтверждения ----------
+function showConfirm({
+  title = '',
+  message = '',
+  confirmText = 'Да',
+  cancelText = 'Отмена'
+} = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        ${title ? `<div class="modal-title">${title}</div>` : ''}
+        <div class="modal-text">${message}</div>
+        <div class="modal-actions">
+          <button class="btn ghost modal-cancel" type="button">${cancelText}</button>
+          <button class="btn modal-confirm" type="button">${confirmText}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    let closed = false;
+    const cleanup = (result) => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', onKey);
+      overlay.classList.add('closing');
+      setTimeout(() => overlay.remove(), 150);
+      resolve(result);
+    };
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
+    };
+
+    overlay.querySelector('.modal-confirm').onclick = () => cleanup(true);
+    overlay.querySelector('.modal-cancel').onclick  = () => cleanup(false);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup(false);
+    });
+    document.addEventListener('keydown', onKey);
+
+    // Автофокус на основную кнопку — удобно для клавиатуры
+    setTimeout(() => overlay.querySelector('.modal-confirm').focus(), 30);
+  });
+}
+
 // ---------- Выход в меню ----------
-function exitToMenu() {
+async function exitToMenu() {
   if (!state.current && state.queue.length === 0 && state.answered === 0) {
     return showMenu();
   }
 
   if (state.mode === 'endless' && state.answered > 0) {
-    if (confirm('Завершить сессию и посмотреть результат?')) {
+    const ok = await showConfirm({
+      title: 'Завершить сессию?',
+      message: 'Показать результат текущей партии?',
+      confirmText: 'Показать',
+      cancelText: 'Продолжить'
+    });
+    if (ok) {
       stopTimer();
       state.queue = [];
       endGame();
@@ -1057,11 +1117,17 @@ function exitToMenu() {
     return;
   }
 
-  const msg = state.answered === 0
-    ? 'Выйти в меню? Прогресс не сохранится.'
-    : `Выйти в меню? Текущий счёт ${state.score} не сохранится.`;
+  const message = state.answered === 0
+    ? 'Прогресс не сохранится.'
+    : `Текущий счёт ${state.score} не сохранится.`;
 
-  if (!confirm(msg)) return;
+  const ok = await showConfirm({
+    title: 'Выйти в меню?',
+    message,
+    confirmText: 'Выйти',
+    cancelText: 'Остаться'
+  });
+  if (!ok) return;
 
   stopTimer();
   state.queue = [];

@@ -777,24 +777,24 @@ function pickLogic(difficulty, ctx = {}) {
 //  РЕЕСТР ГЕНЕРАТОРОВ ПО КАТЕГОРИЯМ
 // ============================================================
 const GENERATORS = {
-  arithmetic:    genArithmetic,
-  sequence:      genSequence,
-  logic:         pickLogic,
+  math_grid:     genMathGrid,
+  wordle:        genWordle,
   memory:        pickMemory,
   concentration: pickConcentration,
-  wordle:        genWordle,
-  math_grid:     genMathGrid        // ← новая игра
+  arithmetic:    genArithmetic,
+  logic:         pickLogic,
+  sequence:      genSequence
 };
 
 // Русские названия для отображения в интерфейсе
 const CATEGORY_NAMES = {
-  arithmetic:    'Арифметика',
-  sequence:      'Ряды',
-  logic:         'Логика',
+  math_grid:     'Мат-сетка',
+  wordle:        'Слова',
   memory:        'Память',
   concentration: 'Концентрация',
-  wordle:        'Слова',
-  math_grid:     'Мат-сетка'
+  arithmetic:    'Арифметика',
+  logic:         'Логика',
+  sequence:      'Ряды'
 };
 
 function generateTasks({ category = 'arithmetic', difficulty = 1, count = 10 }) {
