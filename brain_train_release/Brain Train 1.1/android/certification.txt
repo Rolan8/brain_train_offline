@@ -1,0 +1,24 @@
+---------------------------------------------------
+Here are the ownership and the certification details
+of the Brain Train 1.1
+---------------------------------------------------
+
+app_name - 						Brain Train
+app_alias - 					braintrain
+app_author_name - 				My Company
+app_author_organizational - 	My Company
+app_author_organization - 		My Company
+app_author_locality - 			My Company
+app_author_state - 				Severnaya Osetiya Respublika
+app_author_country - 			Russian Federation
+app_password - 					YFw2XmZwQmtg
+app_versionName - 				versionName "1.1"
+app_versionCode - 				101
+
+---------------------------------------------------
+The certification was created by WebIntoApp.com at
+the Friday 2nd of October 2026 09:14:50 AM
+
+https://webintoapp.com
+---------------------------------------------------
+
