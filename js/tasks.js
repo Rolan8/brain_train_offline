@@ -81,13 +81,28 @@ function genSequence(difficulty) {
 //  WORDLE
 // ============================================================
 function genWordle(difficulty) {
-  const maxAttempts = difficulty === 1 ? 7 : difficulty === 2 ? 6 : 5;
+  
+  // Диапазон длины слова зависит от сложности
+  let minLen, maxLen;
+  if (difficulty === 1) {
+    minLen = 3; maxLen = 5;      // Легко: 3–5 букв
+  } else if (difficulty === 2) {
+    minLen = 6; maxLen = 7;      // Средне: 6–7 букв
+  } else {
+    minLen = 7; maxLen = 9;      // Сложно: 7-9 букв
+  }
 
-  // Ограничиваем длину цели 4–8 буквами — оптимально для Wordle
-  const pool = WORDS.filter(w => w.length >= 4 && w.length <= 8);
-  const raw = pool[rand(0, pool.length - 1)];
+  // Пул слов под нужный диапазон
+  const pool = WORDS.filter(w => w.length >= minLen && w.length <= maxLen);
+
+  // Подстраховка: если для сложного уровня в WORDS нет длинных слов —
+  // используем весь массив, чтобы игра не сломалась
+  const source = pool.length > 0 ? pool : WORDS;
+
+  const raw = source[rand(0, source.length - 1)];
   const target = raw.toUpperCase().replace(/Ё/g, 'Е');
   const wordLength = target.length;
+  const maxAttempts = Math.max(5, Math.min(10, wordLength + 1));
 
   return {
     id: uid('wordle'),

@@ -3,7 +3,7 @@
 // ============================================================
 
 const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const TIME_PER_TASK = isMobile ? 10 : 10;
+const TIME_PER_TASK = 10;
 const TASK_COUNT = 10;
 const REFILL_THRESHOLD = 2;
 const ADVANCE_DELAY = 1500;
@@ -20,16 +20,16 @@ const CATEGORIES = [
 ];
 
 const MODES = [
-  { id: 'timed',   name: 'На время',    icon: '⏱',
-    desc: `${TASK_COUNT} задач · ${TIME_PER_TASK} сек на каждую` },
   { id: 'endless', name: 'Бесконечный', icon: '♾',
-    desc: 'Без таймера, до выхода' }
+    desc: 'Без таймера, до выхода' },
+  { id: 'timed',   name: 'На время',    icon: '⏱',
+    desc: `${TASK_COUNT} задач · ${TIME_PER_TASK} сек на каждую` }
 ];
 
 const state = {
-  category: 'arithmetic',
+  category: 'math_grid',
   difficulty: 1,
-  mode: 'timed',
+  mode: 'endless',
   queue: [],
   current: null,
   answered: 0,
@@ -44,7 +44,6 @@ const state = {
 };
 
 const screen = document.getElementById('screen');
-const statsBar = document.getElementById('statsBar');
 
 // ---------- Утилиты ----------
 const bestKey = (cat, diff, mode) => `bt_best_${mode}_${cat}_${diff}`;
@@ -53,14 +52,15 @@ const getBest = (cat, diff, mode) =>
 const setBest = (cat, diff, mode, v) =>
   localStorage.setItem(bestKey(cat, diff, mode), Math.max(v, getBest(cat, diff, mode)));
 
-function setStats(text) { statsBar.textContent = text; }
+function setStats(text) {
+  const el = document.getElementById('statsBar');
+  if (el) el.textContent = text;
+}
 
 // Нормализация букв: верхний регистр + Ё → Е
 const normalizeWord = (s) => String(s).toUpperCase().replace(/Ё/g, 'Е');
 
 // ---------- Локальная "API" (замена fetch) ----------
-// Задачи генерируются прямо в браузере через generateTasks() из tasks.js.
-// Функция оставлена асинхронной, чтобы не менять остальной код.
 async function fetchTasks(count) {
   return generateTasks({
     category:   state.category,
@@ -69,8 +69,7 @@ async function fetchTasks(count) {
   });
 }
 
-// Словарь берётся из глобального массива WORDS (tasks.js).
-// Формируем Set один раз при загрузке.
+// Словарь берётся из глобального массива DICTIONARY_WORDS (dictionary.js).
 let wordSetPromise = null;
 
 function loadWords() {
@@ -98,6 +97,7 @@ function loadMore() {
 
 // ---------- Меню ----------
 function showMenu() {
+  document.body.classList.remove('in-game');
   stopTimer();
 
   if (state._wordleKeyHandler) {
@@ -113,7 +113,6 @@ function showMenu() {
   state.score = 0;
   state.streak = 0;
   state.bestStreak = 0;
-  setStats('');
 
   const currentCat = CATEGORIES.find(c => c.id === state.category);
   const lockTimed = !!(currentCat && currentCat.endlessOnly);
@@ -159,7 +158,6 @@ function showMenu() {
     d.innerHTML = `<div class="icon">${c.icon}</div><div class="name">${c.name}</div>`;
     d.onclick = () => {
       state.category = c.id;
-      // Для категорий с endlessOnly принудительно включаем бесконечный режим
       if (c.endlessOnly && state.mode !== 'endless') {
         state.mode = 'endless';
       }
@@ -187,7 +185,8 @@ function showMenu() {
 
 // ---------- Старт сессии ----------
 async function startGame() {
-  // Подстраховка: если каким-то образом категория Wordle/MathGrid попала в timed-режим
+  document.body.classList.add('in-game');
+
   const currentCat = CATEGORIES.find(c => c.id === state.category);
   if (currentCat && currentCat.endlessOnly && state.mode !== 'endless') {
     state.mode = 'endless';
@@ -243,6 +242,8 @@ function nextTask() {
 
 // ---------- Рендер задачи ----------
 function renderTask(task) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
   if (task.type === 'memory')    return renderMemoryTask(task);
   if (task.type === 'wordle')    return renderWordleTask(task);
   if (task.type === 'math_grid') return renderMathGridTask(task);
@@ -275,6 +276,7 @@ function renderTask(task) {
     ${isTimed ? `<div class="timer">⏱ <span id="time">${TIME_PER_TASK}</span>с</div>` : ''}
     ${hintHtml}
     ${questionBlock}
+    <div class="stats" id="statsBar"></div>
     <div id="answerArea"></div>
     <div class="feedback" id="feedback"></div>
   `;
@@ -306,7 +308,7 @@ function renderTask(task) {
     area.appendChild(row);
 
     const input = document.getElementById('ans');
-    input.focus();
+    if (!isMobile) input.focus();
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.repeat) submit(input.value);
     });
@@ -342,6 +344,7 @@ function renderGridClick(task, area) {
 // ---------- Задачи на память ----------
 
 function renderMemoryTask(task) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
   state.locked = true;
 
@@ -367,11 +370,14 @@ function renderMemoryTask(task) {
         ${renderMemoryContent(task.memory)}
       </div>
     </div>
+    <div class="stats" id="statsBar"></div>
     <div id="memoryAnswerSlot"></div>
     <div class="feedback" id="feedback"></div>
   `;
 
   document.getElementById('backBtn').onclick = exitToMenu;
+
+  setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 
   const cdEl = document.getElementById('memCountdown');
   let remaining = Math.ceil(task.memory.duration / 1000);
@@ -464,7 +470,7 @@ function renderMemoryAnswerPhase(task) {
       area.appendChild(row);
 
       const input = document.getElementById('ans');
-      input.focus();
+      if (!isMobile) input.focus();
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.repeat) submit(input.value);
       });
@@ -486,6 +492,7 @@ function renderMemoryAnswerPhase(task) {
 // ---------- Math Grid ----------
 
 function renderMathGridTask(task) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
   state.locked = false;
 
@@ -515,6 +522,8 @@ function renderMathGridTask(task) {
       </div>
       <div class="mg-row-grid" id="mathGrid"></div>
     </div>
+
+    <div class="stats" id="statsBar"></div>
 
     <div class="math-grid-controls">
       <button class="btn ghost" id="mgReset">Сброс хода</button>
@@ -575,8 +584,6 @@ function renderMathGridTask(task) {
     showNextButton();
   }
 
-  // Все возможные суммы из 2–3 оставшихся клеток, не совпадающие
-  // ни с одной оставшейся клеткой по отдельности.
   function collectValidTargets() {
     const remaining = [];
     cellEls.forEach((_, i) => {
@@ -626,7 +633,6 @@ function renderMathGridTask(task) {
 
     if (currentSum !== currentTarget) return;
 
-    // Раунд собран
     selectedSet.forEach(i => lockedSet.add(i));
     selectedSet.clear();
 
@@ -637,18 +643,14 @@ function renderMathGridTask(task) {
     feedback.className = 'feedback ok';
     feedback.textContent = `+${points} очков · убрано ${lockedSet.size} из ${TOTAL}`;
 
-    // Если осталось 0 или 1 клетка — победа сразу
     const { remaining } = collectValidTargets();
     if (remaining.length <= 1) {
       finalizeVictory();
       return;
     }
 
-    // Иначе — ищем новую цель из валидных комбинаций
     const nextTarget = generateNewTarget();
     if (nextTarget === null) {
-      // Нет ни одной достижимой цели — не даём игроку застрять,
-      // автоматически завершаем партию победой
       finalizeVictory();
       return;
     }
@@ -672,6 +674,7 @@ function renderMathGridTask(task) {
 // ---------- Wordle ----------
 
 function renderWordleTask(task) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
   state.locked = false;
 
@@ -690,7 +693,7 @@ function renderWordleTask(task) {
     letterCount[ch] = (letterCount[ch] || 0) + 1;
   }
 
-  // Известные позиции уже отгаданных букв: { 'Ы': 1, ... }
+  // Позиции уже отгаданных букв: { 'Ы': 1, 'А': 0, ... }
   const knownCorrect = {};
 
   const attempts = [];
@@ -704,6 +707,7 @@ function renderWordleTask(task) {
     </div>
     <p class="sub" style="text-align:center">${task.question}</p>
     <div class="wordle-grid" id="wordleGrid"></div>
+    <div class="stats" id="statsBar"></div>
     <div class="wordle-keyboard" id="wordleKeyboard"></div>
     <div class="feedback" id="feedback"></div>
   `;
@@ -783,7 +787,7 @@ function renderWordleTask(task) {
     updateCurrentRow();
   }
 
-    async function handleEnter() {
+  async function handleEnter() {
     if (finished) return;
 
     if (currentGuess.length !== LEN) {
@@ -815,19 +819,21 @@ function renderWordleTask(task) {
       }
     }
 
-    // Шаг 2: present / absent для остальных букв
+    // Шаг 2: present / absent / known для остальных букв
     for (let i = 0; i < LEN; i++) {
       if (states[i] === 'correct') continue;
 
       const letter = guess[i];
 
-      // Если эта буква уже отгадана ранее и она в слове одна —
-      // не подсвечиваем её вне правильной позиции
+      // Если буква уже отгадана ранее и в слове она ровно одна —
+      // не подсвечиваем её вне правильной позиции вообще
       if (knownCorrect[letter] !== undefined && letterCount[letter] === 1) {
         states[i] = 'absent';
         continue;
       }
 
+      // Если буква встречается в слове 2+ раза — работает обычная логика:
+      // ищем её в remaining и подсвечиваем жёлтым, если ещё есть незакрытые позиции
       const idx = remaining.indexOf(letter);
       if (idx !== -1) {
         states[i] = 'present';
@@ -842,7 +848,7 @@ function renderWordleTask(task) {
       }
     }
 
-    // ----- отрисовка результата (без изменений) -----
+    // ----- Отрисовка ячеек -----
     for (let c = 0; c < LEN; c++) {
       const cell = gridEl.querySelector(
         `.wordle-cell[data-row="${attempts.length - 1}"][data-col="${c}"]`
@@ -851,6 +857,7 @@ function renderWordleTask(task) {
       cell.classList.add(states[c]);
     }
 
+    // ----- Отрисовка клавиатуры -----
     const pr = { correct: 3, present: 2, absent: 1 };
     for (let c = 0; c < LEN; c++) {
       const key = kbEl.querySelector(`.wordle-key[data-key="${guess[c]}"]`);
@@ -1041,6 +1048,7 @@ function highlightCorrect(task) {
 
 // ---------- Итоги ----------
 function endGame() {
+  window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
   state.current = null;
 
@@ -1074,7 +1082,6 @@ function endGame() {
     </div>
   `;
 
-  setStats('');
   document.getElementById('again').onclick = startGame;
   document.getElementById('menu').onclick = showMenu;
 }
@@ -1130,6 +1137,7 @@ function showConfirm({
 // ---------- Выход в меню ----------
 async function exitToMenu() {
   if (!state.current && state.queue.length === 0 && state.answered === 0) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
     return showMenu();
   }
 
@@ -1164,6 +1172,7 @@ async function exitToMenu() {
   state.queue = [];
   state.current = null;
   state.locked = true;
+  window.scrollTo({ top: 0, behavior: 'instant' });
   showMenu();
 }
 
