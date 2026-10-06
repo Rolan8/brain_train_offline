@@ -34,14 +34,35 @@ function genArithmetic(difficulty) {
   const op = ops[rand(0, ops.length - 1)];
   let a, b, answer;
 
-  if (op === '+')      { const m = difficulty * 20; a = rand(1, m); b = rand(1, m); answer = a + b; }
-  else if (op === '-') { const m = difficulty * 20; a = rand(1, m); b = rand(1, a); answer = a - b; }
-  else if (op === '*') { const m = 9 + difficulty * 3; a = rand(2, m); b = rand(2, m); answer = a * b; }
-  else { const m = 5 + difficulty * 2; b = rand(2, m); answer = rand(2, m); a = b * answer; }
+  // Сложение и вычитание: легко — до 100, средне и сложно — до 999
+  const mAddSub = difficulty === 1 ? 100 : 999;
+
+  if (op === '+') {
+    a = rand(1, mAddSub);
+    b = rand(1, mAddSub);
+    answer = a + b;
+  } else if (op === '-') {
+    a = rand(1, mAddSub);
+    b = rand(1, a);
+    answer = a - b;
+  } else if (op === '*') {
+    const m = 9 + difficulty * 3;
+    a = rand(2, m);
+    b = rand(2, m);
+    answer = a * b;
+  } else {
+    const m = 5 + difficulty * 2;
+    b = rand(2, m);
+    answer = rand(2, m);
+    a = b * answer;
+  }
 
   const sym = { '+': '+', '-': '−', '*': '×', '/': '÷' }[op];
   return {
-    id: uid('arith'), category: 'arithmetic', difficulty, type: 'input',
+    id: uid('arith'),
+    category: 'arithmetic',
+    difficulty,
+    type: 'input',
     question: `${a} ${sym} ${b} = ?`,
     answer,
     explanation: `${a} ${sym} ${b} = ${answer}`
@@ -121,11 +142,32 @@ function genWordle(difficulty) {
 //  МАТ-СЕТКА
 // ============================================================
 function genMathGrid(difficulty) {
-  const numbers = shuffleArr(Array.from({ length: 25 }, (_, i) => i + 1));
-  const valuesSet = new Set(numbers);
-  let target = null;
+  let size, numbers;
 
-  for (let attempt = 0; attempt < 40; attempt++) {
+if (difficulty === 1) {
+  // Легко: 1–25 без повторов, сетка 5×5
+  size = 5;
+  numbers = shuffleArr(Array.from({ length: 25 }, (_, i) => i + 1));
+
+} else if (difficulty === 2) {
+  // Средне: 25 уникальных чисел из 1–50, сетка 5×5
+  size = 5;
+  //numbers = shuffleArr(Array.from({ length: 50 }, (_, i) => i + 1)).slice(0, 25);
+  numbers = shuffleArr(Array.from({ length: 30 }, (_, i) => i + 1));
+
+} else {
+  // Сложно: 25 уникальных чисел из 1–100, сетка 5×5
+  size = 5;
+  //numbers = shuffleArr(Array.from({ length: 100 }, (_, i) => i + 1)).slice(0, 25);
+  numbers = shuffleArr(Array.from({ length: 50 }, (_, i) => i + 1)).slice(0, 30);
+}
+
+  const valuesSet = new Set(numbers);
+  const total = numbers.length;
+
+  // Подбираем начальную цель: сумма 2–3 чисел, не совпадающая ни с одним числом сетки
+  let target = null;
+  for (let attempt = 0; attempt < 60; attempt++) {
     const count = difficulty === 1 ? 2 : rand(2, 3);
     const temp = [...numbers];
     let sum = 0;
@@ -134,14 +176,22 @@ function genMathGrid(difficulty) {
     }
     if (!valuesSet.has(sum)) { target = sum; break; }
   }
+
+  // Fallback: сумма двух наибольших — она всегда больше 100, значит не совпадёт
+  // ни с одним числом из диапазона 1–100
   if (target === null) {
     const sortedDesc = [...numbers].sort((a, b) => b - a);
     target = sortedDesc[0] + sortedDesc[1];
   }
 
   return {
-    id: uid('math-grid'), category: 'math_grid', difficulty, type: 'math_grid',
-    grid: numbers, target,
+    id: uid('math-grid'),
+    category: 'math_grid',
+    difficulty,
+    type: 'math_grid',
+    grid: numbers,
+    size,                 // ← новое поле: 5 или 7
+    target,
     question: `Получи число ${target}, складывая числа из сетки`,
     answer: target,
     explanation: `Закрасьте все клетки, собирая целевые суммы из оставшихся чисел`

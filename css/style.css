@@ -73,6 +73,33 @@ body {
   color: rgb(86, 189, 156);
 }
 
+.btn-info {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid #2b3260;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: .15s;
+  line-height: 1;
+}
+
+.btn-info:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.btn-info:active {
+  transform: scale(0.94);
+}
+
 /* Скрывать пустую строку статистики */
 .stats:empty {
   display: none;

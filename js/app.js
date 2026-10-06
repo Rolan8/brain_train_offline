@@ -3,7 +3,7 @@
 // ============================================================
 
 const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const TIME_PER_TASK = 10;
+const TIME_PER_TASK = 15;
 const TASK_COUNT = 10;
 const REFILL_THRESHOLD = 2;
 const ADVANCE_DELAY = 1500;
@@ -25,6 +25,36 @@ const MODES = [
   { id: 'timed',   name: 'На время',    icon: '⏱',
     desc: `${TASK_COUNT} задач · ${TIME_PER_TASK} сек на каждую` }
 ];
+
+const HINTS = {
+  math_grid: {
+    title: 'Как играть в Мат-сетку',
+    message: `
+      <p>Нажимайте на числа, чтобы сложить их в нужную сумму.</p>
+      <p style="margin-top:10px">Когда сумма совпадёт с числом сверху, все
+      выбранные клетки станут зелёными и заблокируются. После этого появится
+      новая цель — из оставшихся чисел.</p>
+      <p style="margin-top:10px">Если нажали лишнее, используйте
+      <b>«Сброс хода»</b> — выделение снимется.</p>
+      <p style="margin-top:10px"><b>Цель:</b> закрасить все клетки зелёным.</p>
+    `
+  },
+  wordle: {
+    title: 'Как играть в Слова',
+    message: `
+      <p>Введите слово из нужного числа букв и нажмите <b>«Ввод»</b>.</p>
+      <p style="margin-top:10px">Цвет букв подскажет:</p>
+      <p style="margin-top:6px">
+        <span style="color:#34d399">● зелёная</span> — буква на своём месте<br>
+        <span style="color:#f1c40f">● жёлтая</span> — буква есть в слове, но не здесь<br>
+        <span style="color:#8b90b8">● серая</span> — буквы в слове нет
+      </p>
+      <p style="margin-top:10px"><b>Важно:</b> серые клавиши на клавиатуре
+      не отключены — их всё равно можно нажимать. Серый цвет лишь напоминает,
+      что буква уже была проверена.</p>
+    `
+  }
+};
 
 const state = {
   category: 'math_grid',
@@ -502,15 +532,19 @@ function renderMathGridTask(task) {
   let currentSum    = 0;
   let finished      = false;
 
+  const SIZE = task.size || 5;
   const CELLS = task.grid;
   const TOTAL = CELLS.length;
   const showSum = task.difficulty === 1;
   const headClass = showSum ? 'mg-row-head' : 'mg-row-head mg-row-head--nosum';
 
   screen.innerHTML = `
-    <div class="task-header">
+      <div class="task-header">
       <button class="btn-back" id="backBtn" title="Выйти в меню">← В меню</button>
-      <span class="task-counter">Собрано: <span id="mgLocked">0</span> / ${TOTAL}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="task-counter">Собрано: <span id="mgLocked">0</span> / ${TOTAL}</span>
+        <button class="btn-info" id="infoBtn" title="Как играть">?</button>
+      </div>
     </div>
 
     <div class="mg-table" id="mgTable">
@@ -520,7 +554,8 @@ function renderMathGridTask(task) {
         </div>
         ${showSum ? `<div class="mg-head-sum" id="mgSum">0</div>` : ''}
       </div>
-      <div class="mg-row-grid" id="mathGrid"></div>
+      <div class="mg-row-grid" id="mathGrid"
+     style="grid-template-columns: repeat(${SIZE}, 1fr)"></div>
     </div>
 
     <div class="stats" id="statsBar"></div>
@@ -531,7 +566,20 @@ function renderMathGridTask(task) {
     <div class="feedback" id="feedback"></div>
   `;
 
-  document.getElementById('backBtn').onclick = exitToMenu;
+    document.getElementById('backBtn').onclick = exitToMenu;
+  document.getElementById('infoBtn').onclick = () => {
+    showInfo(HINTS.math_grid);
+    localStorage.setItem('bt_hint_math_grid_seen', '1');
+  };
+
+    // Автопоказ при первом заходе
+  if (!localStorage.getItem('bt_hint_math_grid_seen')) {
+    setTimeout(() => {
+      showInfo(HINTS.math_grid).then(() => {
+        localStorage.setItem('bt_hint_math_grid_seen', '1');
+      });
+    }, 400);
+  }
 
   const gridEl        = document.getElementById('mathGrid');
   const targetEl      = document.getElementById('mgTarget');
@@ -703,7 +751,10 @@ function renderWordleTask(task) {
   screen.innerHTML = `
     <div class="task-header">
       <button class="btn-back" id="backBtn">← В меню</button>
-      <span class="task-counter">Попыток: <span id="attemptsLeft">${MAX}</span></span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="task-counter">Попыток: <span id="attemptsLeft">${MAX}</span></span>
+        <button class="btn-info" id="infoBtn" title="Как играть">?</button>
+      </div>
     </div>
     <p class="sub" style="text-align:center">${task.question}</p>
     <div class="wordle-grid" id="wordleGrid"></div>
@@ -713,6 +764,18 @@ function renderWordleTask(task) {
   `;
 
   document.getElementById('backBtn').onclick = exitToMenu;
+  document.getElementById('infoBtn').onclick = () => {
+    showInfo(HINTS.wordle);
+    localStorage.setItem('bt_hint_wordle_seen', '1');
+  };
+
+    if (!localStorage.getItem('bt_hint_wordle_seen')) {
+    setTimeout(() => {
+      showInfo(HINTS.wordle).then(() => {
+        localStorage.setItem('bt_hint_wordle_seen', '1');
+      });
+    }, 400);
+  }
 
   const gridEl = document.getElementById('wordleGrid');
   const kbEl = document.getElementById('wordleKeyboard');
@@ -1127,6 +1190,49 @@ function showConfirm({
     overlay.querySelector('.modal-cancel').onclick  = () => cleanup(false);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) cleanup(false);
+    });
+    document.addEventListener('keydown', onKey);
+
+    setTimeout(() => overlay.querySelector('.modal-confirm').focus(), 30);
+  });
+}
+
+// ---------- Модальное окно с подсказкой ----------
+function showInfo({ title = '', message = '', buttonText = 'Понятно' } = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        ${title ? `<div class="modal-title">${title}</div>` : ''}
+        <div class="modal-text">${message}</div>
+        <div class="modal-actions">
+          <button class="btn modal-confirm" type="button">${buttonText}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    let closed = false;
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', onKey);
+      overlay.classList.add('closing');
+      setTimeout(() => overlay.remove(), 150);
+      resolve();
+    };
+
+    const onKey = (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        cleanup();
+      }
+    };
+
+    overlay.querySelector('.modal-confirm').onclick = cleanup;
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup();
     });
     document.addEventListener('keydown', onKey);
 
