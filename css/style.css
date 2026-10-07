@@ -35,23 +35,29 @@ body {
   background: radial-gradient(circle at 20% 0%, #1b2140, var(--bg));
   color: var(--text);
   min-height: 100vh;
-  min-height: 100dvh;
-
-  /* ← отступ сверху под системный статус-бар */
-  padding-top: env(safe-area-inset-top, 0px);
-
-  /* ← и снизу под жестовую панель Android/iOS */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* НЕ добавляем сюда padding-top: safe-area — это делает topbar сам */
 }
 
-.app { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+
+  /* Умеренный отступ, а не 24 + 60 */
+  padding: 12px 16px 40px;
+}
 
 .topbar {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-top: 20px;
+
+  /* Отступ сверху — учёт системной строки Android/iPhone + немного воздуха */
+  padding-top: 22px;
+  padding-bottom: 4px;
+
+  /* Никаких margin — иначе пустота копится */
+  margin: 0;
 }
 
 .brand {
@@ -68,7 +74,7 @@ body {
   color: var(--muted);
   font-size: 14px;
   min-height: 18px;
-  margin: 12px 0 16px;
+  margin: 8px 0 10px;
   font-weight: bold;
   color: rgb(86, 189, 156);
 }
@@ -209,8 +215,8 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* margin-top: 14px; */
-  margin-bottom: 30px;
+  margin-top: 0;
+  margin-bottom: 20px;
 }
 
 .task-counter {
@@ -716,7 +722,7 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 }
 
 @media (max-width: 420px) {
-  .app { padding: 16px 12px 40px; }
+  .app { padding: 8px 12px 32px; }
   h1 { font-size: 22px; }
   .question { font-size: 24px; padding: 26px 10px; }
 
@@ -745,10 +751,12 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   .memory-cell { font-size: 26px; }
 }
 
+/* В игре шапку убираем полностью — она занимает только место */
 body.in-game .topbar {
   display: none;
 }
 
+/* И подтягиваем контент ближе к верху, но не под системную строку */
 body.in-game .app {
-  padding-top: 30px;
+  padding-top: 24px;
 }

@@ -338,7 +338,7 @@ function renderTask(task) {
     area.appendChild(row);
 
     const input = document.getElementById('ans');
-    if (!isMobile) input.focus();
+    input.focus();
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.repeat) submit(input.value);
     });
@@ -500,7 +500,7 @@ function renderMemoryAnswerPhase(task) {
       area.appendChild(row);
 
       const input = document.getElementById('ans');
-      if (!isMobile) input.focus();
+      input.focus();
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.repeat) submit(input.value);
       });
