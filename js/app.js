@@ -10,13 +10,14 @@ const ADVANCE_DELAY = 1500;
 const NEXT_FOCUS_DELAY = 250;
 
 const CATEGORIES = [
-  { id: 'math_grid',     name: 'Мат-сетка',     icon: '🎲', endlessOnly: true },
+  { id: 'math_grid',     name: 'Мат-сетка',     icon: '🎲'},
   { id: 'wordle',        name: 'Слова',         icon: '🔤', endlessOnly: true },
   { id: 'memory',        name: 'Память',        icon: '🧠' },
+  { id: 'schulte',       name: 'Шульте',        icon: '🔢' },
   { id: 'concentration', name: 'Концентрация',  icon: '🎯' },
   { id: 'arithmetic',    name: 'Арифметика',    icon: '➗' },
   { id: 'logic',         name: 'Логика',        icon: '🧩' },
-  { id: 'sequence',      name: 'Ряды',          icon: '🔢' }
+  { id: 'sequence',      name: 'Ряды',          icon: '🧮' }
 ];
 
 const MODES = [
@@ -89,6 +90,39 @@ function setStats(text) {
 
 // Нормализация букв: верхний регистр + Ё → Е
 const normalizeWord = (s) => String(s).toUpperCase().replace(/Ё/g, 'Е');
+
+// ★ Сколько задач в текущей сессии (5 для Шульте на время, иначе 10)
+function getTaskTotal() {
+  if (state.mode !== 'timed') return TASK_COUNT;
+  if (state.category === 'schulte')   return 3;
+  if (state.category === 'math_grid') return 3;
+  return TASK_COUNT;
+}
+
+// ---------- Динамическое описание режима ----------
+function getModeDesc(modeId, category, difficulty) {
+  if (modeId === 'endless') {
+    return 'Без таймера, до выхода';
+  }
+
+  // Режим «На время» для Шульте: 5 задач
+  if (category === 'schulte') {
+    const perTask = difficulty === 1 ? 30
+                  : difficulty === 2 ? 45
+                  : 60;
+    return `3 задачи · ${perTask} сек на каждую`;
+  }
+
+  // Режим «На время» для Мат-сетки: 3 задачи, время больше обычного
+  if (category === 'math_grid') {
+    const perTask = difficulty === 1 ? 120
+                  : difficulty === 2 ? 180
+                  : 240;
+    return `3 задачи · ${perTask} сек на каждую`;
+  }
+
+  return `${TASK_COUNT} задач · ${TIME_PER_TASK} сек на каждую`;
+}
 
 // ---------- Локальная "API" (замена fetch) ----------
 async function fetchTasks(count) {
@@ -166,13 +200,17 @@ function showMenu() {
   const modes = document.getElementById('modes');
   MODES.forEach(m => {
     const disabled = lockTimed && m.id === 'timed';
+    const desc = disabled
+      ? 'Недоступно для этой категории'
+      : getModeDesc(m.id, state.category, state.difficulty);
+
     const d = document.createElement('div');
     d.className = `card${state.mode === m.id ? ' active' : ''}${disabled ? ' disabled' : ''}`;
     d.innerHTML = `
       <div class="icon">${m.icon}</div>
       <div class="name">${m.name}</div>
       <div class="sub" style="margin:6px 0 0;font-size:12px">
-        ${disabled ? 'Недоступно для этой категории' : m.desc}
+        ${desc}
       </div>
     `;
     if (!disabled) {
@@ -197,7 +235,7 @@ function showMenu() {
   });
 
   const diffs = document.getElementById('diffs');
-  [['Легко', 1], ['Средне', 2], ['Сложно', 3]].forEach(([label, lvl]) => {
+  [['Легкая', 1], ['Средняя', 2], ['Сложная', 3]].forEach(([label, lvl]) => {
     const d = document.createElement('div');
     d.className = `card${state.difficulty === lvl ? ' active' : ''}`;
     d.innerHTML = `
@@ -236,7 +274,7 @@ async function startGame() {
   });
 
   try {
-    state.queue = await fetchTasks(TASK_COUNT);
+    state.queue = await fetchTasks(getTaskTotal());
     nextTask();
   } catch (e) {
     screen.innerHTML = `
@@ -249,7 +287,7 @@ async function startGame() {
 
 // ---------- Переход к следующей задаче ----------
 function nextTask() {
-  if (state.mode === 'timed' && state.answered >= TASK_COUNT) {
+  if (state.mode === 'timed' && state.answered >= getTaskTotal()) {
     return endGame();
   }
 
@@ -277,15 +315,17 @@ function renderTask(task) {
   if (task.type === 'memory')    return renderMemoryTask(task);
   if (task.type === 'wordle')    return renderWordleTask(task);
   if (task.type === 'math_grid') return renderMathGridTask(task);
+  if (task.type === 'schulte')   return renderSchulteTask(task);
 
   state.locked = false;
 
   const isTimed = state.mode === 'timed';
+  const total = getTaskTotal();
   const current = state.answered + 1;
-  const progress = isTimed ? (state.answered / TASK_COUNT) * 100 : 0;
+  const progress = isTimed ? (state.answered / total) * 100 : 0;
 
   const counterText = isTimed
-    ? `Задача ${current} из ${TASK_COUNT}`
+    ? `Задача ${current} из ${total}`
     : `Задача ${current}`;
 
   const hintHtml = task.questionHint
@@ -371,6 +411,94 @@ function renderGridClick(task, area) {
   area.appendChild(wrap);
 }
 
+function renderSchulteTask(task) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  state.locked = false;
+
+  const isTimed = state.mode === 'timed';
+  const total = getTaskTotal();
+  const current = state.answered + 1;
+  const progress = isTimed ? (state.answered / total) * 100 : 0;
+  const counterText = isTimed
+    ? `Задача ${current} из ${total}`
+    : `Задача ${current}`;
+
+  const SIZE = task.size;
+  const TOTAL = task.grid.length;
+
+  screen.innerHTML = `
+    <div class="task-header">
+      <button class="btn-back" id="backBtn">← В меню</button>
+      <span class="task-counter">${counterText}</span>
+    </div>
+    ${isTimed ? `<div class="progress"><div style="width:${progress}%"></div></div>` : ''}
+    ${isTimed ? `<div class="timer">⏱ <span id="time">${task.timeOverride || TIME_PER_TASK}</span>с</div>` : ''}
+    <p class="sub" style="text-align:center;margin:0 0 10px">${task.question}</p>
+    <div class="schulte-status">
+      <span>Следующее: <b id="schulteNext">1</b></span>
+      <span>Найдено: <b id="schulteFound">0</b> / ${TOTAL}</span>
+    </div>
+    <div class="schulte-grid" id="schulteGrid"></div>
+    <div class="stats" id="statsBar"></div>
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  document.getElementById('backBtn').onclick = exitToMenu;
+
+  const gridEl     = document.getElementById('schulteGrid');
+  const nextEl     = document.getElementById('schulteNext');
+  const foundEl    = document.getElementById('schulteFound');
+  const feedback   = document.getElementById('feedback');
+
+  gridEl.style.gridTemplateColumns = `repeat(${SIZE}, 1fr)`;
+
+  let nextNumber = 1;
+  let found = 0;
+  let finished = false;
+
+  task.grid.forEach(num => {
+    const btn = document.createElement('button');
+    btn.className = 'schulte-cell';
+    btn.type = 'button';
+    btn.textContent = num;
+    btn.dataset.value = num;
+    btn.onclick = () => onCellClick(num, btn);
+    gridEl.appendChild(btn);
+  });
+
+  function onCellClick(num, btn) {
+    if (finished || state.locked) return;
+    if (btn.disabled) return;
+
+    if (num === nextNumber) {
+      btn.classList.add('found');
+      btn.disabled = true;
+      found++;
+      nextNumber++;
+      nextEl.textContent = nextNumber <= TOTAL ? nextNumber : '✓';
+      foundEl.textContent = found;
+      feedback.textContent = '';
+      feedback.className = 'feedback';
+
+      if (found === TOTAL) {
+        finished = true;
+        setTimeout(() => {
+          if (state.current !== task) return;
+          submit('done');
+        }, 200);
+      }
+    } else {
+      btn.classList.add('wrong');
+      feedback.className = 'feedback err';
+      feedback.textContent = `Нужно нажать ${nextNumber}`;
+      setTimeout(() => btn.classList.remove('wrong'), 400);
+    }
+  }
+
+  setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
+  if (isTimed) startTimer();
+}
+
 // ---------- Задачи на память ----------
 
 function renderMemoryTask(task) {
@@ -379,11 +507,12 @@ function renderMemoryTask(task) {
   state.locked = true;
 
   const isTimed = state.mode === 'timed';
+  const total = getTaskTotal();
   const current = state.answered + 1;
-  const progress = isTimed ? (state.answered / TASK_COUNT) * 100 : 0;
+  const progress = isTimed ? (state.answered / total) * 100 : 0;
 
   const counterText = isTimed
-    ? `Задача ${current} из ${TASK_COUNT}`
+    ? `Задача ${current} из ${total}`
     : `Задача ${current}`;
 
   screen.innerHTML = `
@@ -526,6 +655,13 @@ function renderMathGridTask(task) {
   stopTimer();
   state.locked = false;
 
+  // ★ Кастомное время для режима «На время» (45 / 60 / 90 сек)
+  if (state.mode === 'timed') {
+    task.timeOverride = task.difficulty === 1 ? 120
+                      : task.difficulty === 2 ? 180
+                      : 240;
+  }
+
   const lockedSet   = new Set();
   const selectedSet = new Set();
   let currentTarget = task.target;
@@ -538,14 +674,25 @@ function renderMathGridTask(task) {
   const showSum = task.difficulty === 1;
   const headClass = showSum ? 'mg-row-head' : 'mg-row-head mg-row-head--nosum';
 
+  // ★ Таймер и счётчик задач для режима «На время»
+  const isTimed = state.mode === 'timed';
+  const total = getTaskTotal();
+  const current = state.answered + 1;
+  const progress = isTimed ? (state.answered / total) * 100 : 0;
+  const counterText = isTimed
+    ? `Задача ${current} из ${total}`
+    : `Задача ${current}`;
+
   screen.innerHTML = `
-      <div class="task-header">
+    <div class="task-header">
       <button class="btn-back" id="backBtn" title="Выйти в меню">← В меню</button>
       <div style="display:flex;align-items:center;gap:10px">
-        <span class="task-counter">Собрано: <span id="mgLocked">0</span> / ${TOTAL}</span>
+        <span class="task-counter">${counterText}</span>
         <button class="btn-info" id="infoBtn" title="Как играть">?</button>
       </div>
     </div>
+    ${isTimed ? `<div class="progress"><div style="width:${progress}%"></div></div>` : ''}
+    ${isTimed ? `<div class="timer">⏱ <span id="time">${task.timeOverride || TIME_PER_TASK}</span>с</div>` : ''}
 
     <div class="mg-table" id="mgTable">
       <div class="${headClass}">
@@ -566,13 +713,12 @@ function renderMathGridTask(task) {
     <div class="feedback" id="feedback"></div>
   `;
 
-    document.getElementById('backBtn').onclick = exitToMenu;
+  document.getElementById('backBtn').onclick = exitToMenu;
   document.getElementById('infoBtn').onclick = () => {
     showInfo(HINTS.math_grid);
     localStorage.setItem('bt_hint_math_grid_seen', '1');
   };
 
-    // Автопоказ при первом заходе
   if (!localStorage.getItem('bt_hint_math_grid_seen')) {
     setTimeout(() => {
       showInfo(HINTS.math_grid).then(() => {
@@ -584,7 +730,6 @@ function renderMathGridTask(task) {
   const gridEl        = document.getElementById('mathGrid');
   const targetEl      = document.getElementById('mgTarget');
   const sumEl         = document.getElementById('mgSum');
-  const lockedCountEl = document.getElementById('mgLocked');
   const feedback      = document.getElementById('feedback');
 
   CELLS.forEach((num, i) => {
@@ -602,7 +747,6 @@ function renderMathGridTask(task) {
   function updateUI() {
     targetEl.textContent = currentTarget;
     if (sumEl) sumEl.textContent = currentSum;
-    lockedCountEl.textContent = lockedSet.size;
 
     cellEls.forEach((el, i) => {
       el.classList.toggle('locked',   lockedSet.has(i));
@@ -717,6 +861,9 @@ function renderMathGridTask(task) {
 
   updateUI();
   setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
+
+  // ★ Запускаем таймер в режиме «На время»
+  if (isTimed) startTimer();
 }
 
 // ---------- Wordle ----------
@@ -735,13 +882,11 @@ function renderWordleTask(task) {
   const MAX = task.maxAttempts;
   const TARGET = normalizeWord(task.answer);
 
-  // Сколько раз каждая буква встречается в загаданном слове
   const letterCount = {};
   for (const ch of TARGET) {
     letterCount[ch] = (letterCount[ch] || 0) + 1;
   }
 
-  // Позиции уже отгаданных букв: { 'Ы': 1, 'А': 0, ... }
   const knownCorrect = {};
 
   const attempts = [];
@@ -769,7 +914,7 @@ function renderWordleTask(task) {
     localStorage.setItem('bt_hint_wordle_seen', '1');
   };
 
-    if (!localStorage.getItem('bt_hint_wordle_seen')) {
+  if (!localStorage.getItem('bt_hint_wordle_seen')) {
     setTimeout(() => {
       showInfo(HINTS.wordle).then(() => {
         localStorage.setItem('bt_hint_wordle_seen', '1');
@@ -874,7 +1019,6 @@ function renderWordleTask(task) {
     const states = new Array(LEN).fill('absent');
     const remaining = TARGET.split('');
 
-    // Шаг 1: точные попадания → correct
     for (let i = 0; i < LEN; i++) {
       if (guess[i] === TARGET[i]) {
         states[i] = 'correct';
@@ -882,21 +1026,16 @@ function renderWordleTask(task) {
       }
     }
 
-    // Шаг 2: present / absent / known для остальных букв
     for (let i = 0; i < LEN; i++) {
       if (states[i] === 'correct') continue;
 
       const letter = guess[i];
 
-      // Если буква уже отгадана ранее и в слове она ровно одна —
-      // не подсвечиваем её вне правильной позиции вообще
       if (knownCorrect[letter] !== undefined && letterCount[letter] === 1) {
         states[i] = 'absent';
         continue;
       }
 
-      // Если буква встречается в слове 2+ раза — работает обычная логика:
-      // ищем её в remaining и подсвечиваем жёлтым, если ещё есть незакрытые позиции
       const idx = remaining.indexOf(letter);
       if (idx !== -1) {
         states[i] = 'present';
@@ -904,14 +1043,12 @@ function renderWordleTask(task) {
       }
     }
 
-    // Запоминаем новые правильно угаданные буквы
     for (let i = 0; i < LEN; i++) {
       if (states[i] === 'correct') {
         knownCorrect[guess[i]] = i;
       }
     }
 
-    // ----- Отрисовка ячеек -----
     for (let c = 0; c < LEN; c++) {
       const cell = gridEl.querySelector(
         `.wordle-cell[data-row="${attempts.length - 1}"][data-col="${c}"]`
@@ -920,7 +1057,6 @@ function renderWordleTask(task) {
       cell.classList.add(states[c]);
     }
 
-    // ----- Отрисовка клавиатуры -----
     const pr = { correct: 3, present: 2, absent: 1 };
     for (let c = 0; c < LEN; c++) {
       const key = kbEl.querySelector(`.wordle-key[data-key="${guess[c]}"]`);
@@ -993,8 +1129,10 @@ function renderWordleTask(task) {
 // ---------- Таймер ----------
 function startTimer() {
   stopTimer();
-  state.timeLeft = TIME_PER_TASK;
+  const override = state.current && state.current.timeOverride;
+  state.timeLeft = override || TIME_PER_TASK;
   const el = document.getElementById('time');
+  if (el) el.textContent = state.timeLeft;
 
   state.timerId = setInterval(() => {
     state.timeLeft--;
@@ -1046,14 +1184,20 @@ function submit(value, btnEl) {
 
     if (btnEl) btnEl.classList.add('correct');
     feedback.className = 'feedback ok';
-    feedback.textContent = `Верно! +${points} очков`;
+    feedback.textContent = task.type === 'schulte'
+      ? `Собрано! +${points} очков`
+      : `Верно! +${points} очков`;
   } else {
     state.streak = 0;
     if (btnEl) btnEl.classList.add('wrong');
     feedback.className = 'feedback err';
-    feedback.textContent = value === null
-      ? `Время вышло. Ответ: ${task.answer}`
-      : `Неверно. Ответ: ${task.answer} — ${task.explanation}`;
+     if (task.type === 'schulte') {
+      feedback.textContent = 'Время вышло';
+    } else {
+      feedback.textContent = value === null
+        ? `Время вышло. Ответ: ${task.answer}`
+        : `Неверно. Ответ: ${task.answer} — ${task.explanation}`;
+    }
     highlightCorrect(task);
 
     if (state.mode === 'endless') {

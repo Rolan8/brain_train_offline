@@ -557,11 +557,41 @@ function genCountLetter(difficulty) {
   };
 }
 
+// Таблица Шульте: числа 1–25 в случайном порядке, нажимать по порядку
+function genSchulteTable(difficulty) {
+  // Размер сетки и время зависят от сложности
+  let size, timeOverride;
+  if (difficulty === 1) {
+    size = 4; timeOverride = 30;   // Легко: 4×4 = 16 чисел, 30 сек
+  } else if (difficulty === 2) {
+    size = 5; timeOverride = 45;   // Средне: 5×5 = 25 чисел, 45 сек
+  } else {
+    size = 6; timeOverride = 60;   // Сложно: 6×6 = 36 чисел, 60 сек
+  }
+
+  const total = size * size;
+  const numbers = shuffleArr(Array.from({ length: total }, (_, i) => i + 1));
+
+  return {
+    id: uid('schulte'),
+    category: 'schulte',
+    difficulty,
+    type: 'schulte',
+    grid: numbers,
+    size,
+    answer: 'done',
+    timeOverride,
+    question: `Нажимайте числа по порядку от 1 до ${total}`,
+    explanation: 'Классическая таблица Шульте — тренировка внимания и периферийного зрения'
+  };
+}
+
 function pickConcentration(difficulty) {
   const r = Math.random();
-  if (r < 0.4) return genStroop(difficulty);
-  if (r < 0.7) return genFindDifferent(difficulty);
-  return genCountLetter(difficulty);
+  if (r < 0.30) return genStroop(difficulty);
+  if (r < 0.55) return genFindDifferent(difficulty);
+  if (r < 0.80) return genCountLetter(difficulty);
+  return genSchulteTable(difficulty);
 }
 
 // ============================================================
@@ -572,6 +602,7 @@ const GENERATORS = {
   wordle:        genWordle,
   memory:        pickMemory,
   concentration: pickConcentration,
+  schulte:       genSchulteTable,
   arithmetic:    genArithmetic,
   logic:         pickLogic,
   sequence:      genSequence
@@ -582,6 +613,7 @@ const CATEGORY_NAMES = {
   wordle:        'Слова',
   memory:        'Память',
   concentration: 'Концентрация',
+  schulte:       'Шульте',
   arithmetic:    'Арифметика',
   logic:         'Логика',
   sequence:      'Ряды'

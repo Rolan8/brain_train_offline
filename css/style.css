@@ -705,6 +705,76 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   margin: 0 auto;
 }
 
+/* ============================================================
+   SCHULTE TABLE — таблица Шульте в категории «Концентрация»
+   ============================================================ */
+
+.schulte-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 4px;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  flex: 0 0 auto;
+}
+
+.schulte-status b {
+  color: var(--text);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.schulte-grid {
+  display: grid;
+  gap: 6px;
+  max-width: min(440px, 90vw);
+  margin: 0 auto 10px;
+  flex: 0 1 auto;
+}
+
+.schulte-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: clamp(18px, 6vw, 26px);
+  font-weight: 700;
+  font-family: inherit;
+
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid #2b3260;
+  border-radius: 10px;
+  cursor: pointer;
+
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
+}
+
+.schulte-cell:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: scale(1.03);
+}
+
+.schulte-cell.found {
+  background: var(--ok);
+  color: #0f1220;
+  border-color: #34d399;
+  cursor: default;
+  transform: none;
+}
+
+.schulte-cell.wrong {
+  background: var(--err);
+  color: #fff;
+  border-color: #f87171;
+  animation: mg-shake 0.3s ease;
+}
+
 
 
 /* ============================================================
