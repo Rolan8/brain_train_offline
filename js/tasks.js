@@ -106,7 +106,7 @@ function genWordle(difficulty) {
   // Диапазон длины слова зависит от сложности
   let minLen, maxLen;
   if (difficulty === 1) {
-    minLen = 3; maxLen = 5;      // Легко: 3–5 букв
+    minLen = 4; maxLen = 5;      // Легко: 3–5 букв
   } else if (difficulty === 2) {
     minLen = 6; maxLen = 7;      // Средне: 6–7 букв
   } else {
@@ -386,7 +386,7 @@ function genMemorySequence(difficulty, reverse = false) {
     let d; do { d = rand(0, 9); } while (d === prev);
     items.push(d); prev = d;
   }
-  const duration = 1200 + len * 350;
+  const duration = 4000;
   const answer = reverse ? [...items].reverse().join('') : items.join('');
   return {
     id: uid(reverse ? 'mem-rev' : 'mem-seq'), category: 'memory', difficulty,
@@ -416,7 +416,7 @@ function genMemoryGridCount(difficulty) {
     cells.push(other[rand(0, other.length - 1)]);
   }
   const shuffled = shuffleArr(cells);
-  const duration = 1800 + total * 120;
+  const duration = 4000;
   return {
     id: uid('mem-grid-count'), category: 'memory', difficulty, type: 'memory', memoryType: 'grid-count',
     memory: { kind: 'grid', size, cells: shuffled, duration, label: 'Запомните, сколько каких символов' },
@@ -439,7 +439,7 @@ function genMemoryGridMissing(difficulty) {
   const shuffled = shuffleArr(cells);
   const after = [...shuffled];
   after[after.indexOf(missing)] = '';
-  const duration = 2000 + total * 120;
+  const duration = 4000;
   return {
     id: uid('mem-grid-missing'), category: 'memory', difficulty, type: 'memory', memoryType: 'grid-missing',
     memory: { kind: 'grid', size, cells: shuffled, duration, label: 'Запомните все символы' },
@@ -564,7 +564,7 @@ function genSchulteTable(difficulty) {
   if (difficulty === 1) {
     size = 4; timeOverride = 30;   // Легко: 4×4 = 16 чисел, 30 сек
   } else if (difficulty === 2) {
-    size = 5; timeOverride = 45;   // Средне: 5×5 = 25 чисел, 45 сек
+    size = 5; timeOverride = 40;   // Средне: 5×5 = 25 чисел, 45 сек
   } else {
     size = 6; timeOverride = 60;   // Сложно: 6×6 = 36 чисел, 60 сек
   }

@@ -10,39 +10,16 @@
   --muted: #8b90b8;
 }
 
-/* body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 20% 0%, #1b2140, var(--bg));
-  color: var(--text);
-
-  min-height: 100vh;
-  min-height: 100dvh;         
-
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;    
-}
-
-.app {
-  max-width: 720px;
-  width: 100%;
-  padding: 24px 16px;
-  margin: auto;
-} */
-
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: radial-gradient(circle at 20% 0%, #1b2140, var(--bg));
   color: var(--text);
   min-height: 100vh;
-  /* НЕ добавляем сюда padding-top: safe-area — это делает topbar сам */
 }
 
 .app {
   max-width: 720px;
   margin: 0 auto;
-
-  /* Умеренный отступ, а не 24 + 60 */
   padding: 12px 16px 40px;
 }
 
@@ -51,12 +28,8 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-
-  /* Отступ сверху — учёт системной строки Android/iPhone + немного воздуха */
   padding-top: 22px;
   padding-bottom: 4px;
-
-  /* Никаких margin — иначе пустота копится */
   margin: 0;
 }
 
@@ -71,7 +44,6 @@ body {
 
 .stats {
   text-align: center;
-  color: var(--muted);
   font-size: 14px;
   min-height: 18px;
   margin: 8px 0 10px;
@@ -106,7 +78,6 @@ body {
   transform: scale(0.94);
 }
 
-/* Скрывать пустую строку статистики */
 .stats:empty {
   display: none;
 }
@@ -114,7 +85,12 @@ body {
 h1 { font-size: 26px; margin-bottom: 8px; }
 .sub { color: var(--muted); margin-bottom: 24px; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
 
 .card {
   background: var(--card);
@@ -124,12 +100,11 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   cursor: pointer;
   transition: .15s;
 }
-.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card:hover { border-color: var(--accent); }
 .card.active { border-color: var(--accent); background: #222a4d; }
 .card .icon { font-size: 24px; }
 .card .name { margin-top: 8px; font-weight: 600; }
 
-/* Заблокированная карточка (например, «На время» для категории «Слова») */
 .card.disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -240,16 +215,10 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   border-color: var(--accent);
 }
 
-.timer.idle {
-  opacity: 0.5;
-}
+.timer.idle { opacity: 0.5; }
+.timer.active { color: var(--accent); font-weight: 600; }
 
-.timer.active {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.card .sub { color: var(--muted);}
+.card .sub { color: var(--muted); }
 
 .memory-phase {
   background: var(--card);
@@ -321,7 +290,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   100% { background: #2b3260; border-color: #4a5180; }
 }
 
-/* Поток букв для задачи "сколько раз встречается" */
 .letter-stream {
   font-family: 'Courier New', monospace;
   font-size: 22px;
@@ -336,7 +304,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   margin-bottom: 14px;
 }
 
-/* Кликабельная сетка для "найди отличающийся" */
 .click-grid {
   display: grid;
   gap: 6px;
@@ -384,7 +351,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 
 .wordle-row {
   display: grid;
-  /* grid-template-columns задаётся из JS: repeat(LEN, 1fr) */
   gap: 6px;
 }
 
@@ -443,7 +409,7 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .wordle-key.absent  { background: #1a1f36; color: var(--muted); }
 
 /* ============================================================
-   MATH GRID — таблица в стиле классической головоломки
+   MATH GRID
    ============================================================ */
 
 .mg-table {
@@ -455,7 +421,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   background: var(--card);
 }
 
-/* Шапка таблицы: цель + текущая сумма */
 .mg-row-head {
   display: grid;
   grid-template-columns: 4fr 1fr;
@@ -491,12 +456,11 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   font-family: ui-monospace, Consolas, monospace;
 }
 
-/* Сетка 5×5 — общие линии между клетками */
 .mg-row-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  background: #2b3260;   /* цвет линий между клетками */
-  gap: 1.5px;            /* толщина линий */
+  background: #2b3260;
+  gap: 1.5px;
 }
 
 .mg-cell {
@@ -550,7 +514,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   75%      { transform: translateX(-3px); }
 }
 
-/* Кнопка «Сброс хода» под таблицей */
 .math-grid-controls {
   display: flex;
   justify-content: center;
@@ -562,7 +525,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   max-width: 240px;
 }
 
-/* Шапка Math Grid без отображения суммы (средний и сложный уровни) */
 .mg-row-head--nosum {
   grid-template-columns: 1fr;
 }
@@ -570,8 +532,7 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   border-right: none;
 }
 
-/* ===== STROOP — визуальный сигнал-бейдж ===== */
-
+/* ===== STROOP ===== */
 .stroop-signal {
   display: flex;
   align-items: center;
@@ -587,14 +548,8 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   animation: stroopSignalIn 0.3s ease;
 }
 
-.stroop-signal-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.stroop-signal-text {
-  font-size: 13px;
-}
+.stroop-signal-icon { font-size: 22px; line-height: 1; }
+.stroop-signal-text { font-size: 13px; }
 
 .stroop-signal.signal-ink {
   color: #6c8cff;
@@ -613,15 +568,12 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* В timed-режиме таймер уже отвлекает — сделаем сигнал чуть заметнее */
 .stroop-signal .stroop-signal-icon {
   filter: drop-shadow(0 0 6px currentColor);
 }
 
-
-
 /* ============================================================
-   МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ
+   МОДАЛЬНОЕ ОКНО
    ============================================================ */
 
 .modal-overlay {
@@ -678,25 +630,20 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   font-size: 15px;
 }
 
-.modal-actions .btn.ghost {
-  color: var(--text);
-}
+.modal-actions .btn.ghost { color: var(--text); }
 
 @keyframes modalOverlayIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
 @keyframes modalOverlayOut {
   from { opacity: 1; }
   to   { opacity: 0; }
 }
-
 @keyframes modalIn {
   from { opacity: 0; transform: translateY(8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 
 .brand-logo {
   height: 64px;
@@ -706,7 +653,7 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 }
 
 /* ============================================================
-   SCHULTE TABLE — таблица Шульте в категории «Концентрация»
+   SCHULTE
    ============================================================ */
 
 .schulte-status {
@@ -775,14 +722,12 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   animation: mg-shake 0.3s ease;
 }
 
-
-
 /* ============================================================
    Мобильная адаптация
    ============================================================ */
 
 @media (hover: hover) and (pointer: fine) {
-  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card:hover { border-color: var(--accent); }
   .option:hover { border-color: var(--accent); }
   .click-cell:hover { filter: brightness(1.3); transform: scale(1.06); }
   .mg-cell:hover:not(:disabled):not(.selected):not(.locked) { background: #232947; }
@@ -811,7 +756,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   .mg-head-sum { font-size: 20px; }
 
   .brand-logo { height: 60px; }
-  /* .topbar { margin-bottom: 24px; } */
 }
 
 @media (max-width: 360px) {
@@ -821,12 +765,456 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   .memory-cell { font-size: 26px; }
 }
 
-/* В игре шапку убираем полностью — она занимает только место */
-body.in-game .topbar {
-  display: none;
+body.in-game .topbar { display: none; }
+
+body.in-game .app { padding-top: 24px; }
+
+/* ============================================================
+   АНИМАЦИИ — BrainTrainer
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
-/* И подтягиваем контент ближе к верху, но не под системную строку */
-body.in-game .app {
-  padding-top: 24px;
+/* ---------- 1. Фон ---------- */
+body {
+  background-size: 200% 200%;
+  animation: bgDrift 24s ease-in-out infinite;
+}
+@keyframes bgDrift {
+  0%, 100% { background-position: 0% 0%; }
+  50%      { background-position: 100% 30%; }
+}
+
+/* ---------- 2. Экраны ---------- */
+.screen-anim {
+  animation: screenIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.screen-anim--out {
+  animation: screenOut 0.22s ease forwards;
+}
+@keyframes screenOut {
+  to { opacity: 0; transform: translateY(-10px) scale(0.99); }
+}
+
+/* ---------- 3. Логотип и заголовок ---------- */
+.brand-logo {
+  animation: logoFloat 5s ease-in-out infinite;
+}
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0)   rotate(0deg); }
+  50%      { transform: translateY(-4px) rotate(-1.2deg); }
+}
+
+.brand {
+  background: linear-gradient(90deg, #e7e9f5, #6c8cff, #e7e9f5);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brandShine 6s linear infinite;
+}
+@keyframes brandShine {
+  to { background-position: 200% center; }
+}
+
+/* ---------- 4. Карточки меню ---------- */
+/* Вход-анимация — только когда у .app есть .menu-intro (один раз за сессию).
+   При кликах по карточкам — никаких keyframes, только transition цвета. */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-intro .card {
+  animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* Статичное свечение по центру (без слежки за курсором) */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(
+    120px circle at 50% 50%,
+    rgba(108, 140, 255, 0.18),
+    transparent 65%
+  );
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover::after { opacity: 1; }
+}
+
+/* Иконка карточки — подъём только на десктопе */
+.card .icon {
+  display: inline-block;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .icon { transform: translateY(-3px) rotate(-6deg) scale(1.08); }
+}
+
+/* ---------- 5. Кнопки ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.2s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn:not(.ghost):hover {
+  box-shadow: 0 8px 24px -8px rgba(108, 140, 255, 0.55);
+}
+.btn:not(.ghost)::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -75%;
+  width: 50%; height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.btn:not(.ghost):hover::before {
+  animation: btnShine 0.9s ease;
+}
+@keyframes btnShine {
+  to { left: 125%; }
+}
+
+/* ---------- 6. Вопрос и варианты ---------- */
+.question {
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.options .option {
+  animation: optionIn 0.35s ease backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes optionIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.option.correct {
+  animation: correctPulse 0.55s ease;
+}
+@keyframes correctPulse {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+.option.wrong {
+  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@keyframes shake {
+  10%, 90% { transform: translateX(-3px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+
+/* ---------- 7. Прогресс ---------- */
+.progress > div {
+  position: relative;
+  overflow: hidden;
+}
+.progress > div::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: progressShine 1.8s ease-in-out infinite;
+}
+@keyframes progressShine {
+  to { transform: translateX(100%); }
+}
+
+/* ---------- 8. Таймер ---------- */
+.timer.active {
+  animation: timerBreath 1.4s ease-in-out infinite;
+}
+@keyframes timerBreath {
+  0%, 100% { opacity: 1;   letter-spacing: 0; }
+  50%      { opacity: 0.7; letter-spacing: 0.04em; }
+}
+
+.timer.danger {
+  color: var(--err);
+  animation: timerDanger 0.7s ease-in-out infinite;
+}
+@keyframes timerDanger {
+  0%, 100% { transform: scale(1);    text-shadow: 0 0 0 rgba(248, 113, 113, 0); }
+  50%      { transform: scale(1.06); text-shadow: 0 0 14px rgba(248, 113, 113, 0.7); }
+}
+
+/* ---------- 9. Счёт / результат ---------- */
+.stats.bump,
+.result .score.bump {
+  animation: numberBump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes numberBump {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); color: var(--accent); }
+  100% { transform: scale(1); }
+}
+
+.result {
+  animation: resultIn 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.result .score {
+  animation: scorePop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes resultIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes scorePop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- 10. Фидбэк ---------- */
+.feedback.ok  { animation: fbIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.feedback.err { animation: fbIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes fbIn {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ---------- 11. Wordle ---------- */
+.wordle-cell.filled {
+  animation: cellPop 0.18s ease;
+}
+@keyframes cellPop {
+  0%   { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+.wordle-cell.correct,
+.wordle-cell.present,
+.wordle-cell.absent {
+  animation: flipIn 0.55s ease forwards;
+  transform-origin: center;
+}
+@keyframes flipIn {
+  0%   { transform: rotateX(0deg); }
+  50%  { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
+}
+
+.wordle-row {
+  animation: rowIn 0.25s ease;
+}
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 12. Memory ---------- */
+.memory-digits {
+  animation: digitsIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes digitsIn {
+  0%   { opacity: 0; letter-spacing: 30px; filter: blur(6px); }
+  100% { opacity: 1; letter-spacing: 8px;  filter: blur(0); }
+}
+
+.memory-cell {
+  animation: cellIn 0.35s ease backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+@keyframes cellIn {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.memory-countdown {
+  animation: countdownPulse 0.9s ease-in-out infinite;
+}
+@keyframes countdownPulse {
+  0%, 100% { transform: scale(1);    color: var(--accent); }
+  50%      { transform: scale(1.08); color: #a5b8ff; }
+}
+
+/* ---------- 13. Мат-сетка ---------- */
+.mg-cell {
+  animation: mgCellIn 0.3s ease backwards;
+  animation-delay: calc(var(--i, 0) * 18ms);
+}
+@keyframes mgCellIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.mg-cell.selected {
+  animation: mgSelect 0.25s ease;
+}
+@keyframes mgSelect {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.mg-cell.locked {
+  animation: mgLock 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes mgLock {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18) rotate(4deg); }
+  100% { transform: scale(1)    rotate(0); }
+}
+
+/* ---------- 14. Шульте ---------- */
+.schulte-cell {
+  animation: schulteIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+@keyframes schulteIn {
+  from { opacity: 0; transform: scale(0.5) rotate(-6deg); }
+  to   { opacity: 1; transform: scale(1)   rotate(0); }
+}
+
+.schulte-cell.found {
+  animation: schulteFound 0.5s ease forwards;
+}
+@keyframes schulteFound {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- 15. Клик-сетка ---------- */
+.click-cell.correct {
+  animation: clickCorrect 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes clickCorrect {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.click-cell.wrong {
+  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ---------- 16. Stroop ---------- */
+.stroop-signal {
+  animation: stroopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes stroopIn {
+  from { opacity: 0; transform: scale(0.8) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.stroop-signal-icon {
+  animation: iconGlow 1.6s ease-in-out infinite;
+}
+@keyframes iconGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px currentColor); }
+  50%      { filter: drop-shadow(0 0 12px currentColor); }
+}
+
+/* ---------- 17. Модалка ---------- */
+.modal-title {
+  animation: modalTitleIn 0.4s ease;
+}
+@keyframes modalTitleIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 18. Поток букв ---------- */
+.letter-stream {
+  animation: streamIn 0.5s ease backwards;
+}
+@keyframes streamIn {
+  from { opacity: 0; letter-spacing: 20px; filter: blur(4px); }
+  to   { opacity: 1; letter-spacing: 8px;  filter: blur(0); }
+}
+
+/* ---------- 19. Комбо ---------- */
+.combo {
+  animation: comboPulse 0.6s ease;
+  color: #f1c40f;
+  text-shadow: 0 0 12px rgba(241, 196, 15, 0.6);
+}
+@keyframes comboPulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3) rotate(-4deg); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- 20. Ripple ---------- */
+.ripple {
+  position: relative;
+}
+.ripple > .ripple-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  pointer-events: none;
+  animation: rippleGo 0.6s ease-out forwards;
+}
+@keyframes rippleGo {
+  to { transform: scale(2.5); opacity: 0; }
+}
+
+/* ---------- 21. Уход задачи ---------- */
+.task-leave {
+  animation: taskLeave 0.35s ease forwards;
+}
+@keyframes taskLeave {
+  to { opacity: 0; transform: translateY(-10px) scale(0.98); }
+}
+
+/* ---------- 22. Вспышка экрана ---------- */
+body.flash-ok::before,
+body.flash-err::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  animation: flash 0.45s ease;
+}
+body.flash-ok::before  { background: radial-gradient(circle, rgba(52, 211, 153, 0.25), transparent 70%); }
+body.flash-err::before { background: radial-gradient(circle, rgba(248, 113, 113, 0.28), transparent 70%); }
+@keyframes flash {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  100% { opacity: 0; }
 }

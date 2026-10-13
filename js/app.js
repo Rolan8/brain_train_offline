@@ -10,7 +10,7 @@ const ADVANCE_DELAY = 1500;
 const NEXT_FOCUS_DELAY = 250;
 
 const CATEGORIES = [
-  { id: 'math_grid',     name: 'Мат-сетка',     icon: '🎲'},
+  { id: 'math_grid',     name: 'Мат-сетка',     icon: '🎲' },
   { id: 'wordle',        name: 'Слова',         icon: '🔤', endlessOnly: true },
   { id: 'memory',        name: 'Память',        icon: '🧠' },
   { id: 'schulte',       name: 'Шульте',        icon: '🔢' },
@@ -83,15 +83,59 @@ const getBest = (cat, diff, mode) =>
 const setBest = (cat, diff, mode, v) =>
   localStorage.setItem(bestKey(cat, diff, mode), Math.max(v, getBest(cat, diff, mode)));
 
+// ---------- Хелперы анимаций ----------
+function bumpNumber(el) {
+  if (!el) return;
+  el.classList.remove('bump');
+  void el.offsetWidth;             // рестарт анимации
+  el.classList.add('bump');
+  el.addEventListener('animationend', () => el.classList.remove('bump'), { once: true });
+}
+
+function flashScreen(kind) {
+  const cls = kind === 'ok' ? 'flash-ok' : 'flash-err';
+  document.body.classList.remove('flash-ok', 'flash-err');
+  void document.body.offsetWidth;
+  document.body.classList.add(cls);
+  document.body.addEventListener('animationend', () => {
+    document.body.classList.remove(cls);
+  }, { once: true });
+}
+
+function stagger(container, selector) {
+  if (!container) return;
+  [...container.querySelectorAll(selector)].forEach((el, i) =>
+    el.style.setProperty('--i', i)
+  );
+}
+
+function playMenuIntroOnce(menuRoot) {
+  if (!menuRoot) return;
+  if (menuRoot.dataset.introPlayed === '1') return;
+  menuRoot.dataset.introPlayed = '1';
+  menuRoot.classList.add('menu-intro');
+  const cards = menuRoot.querySelectorAll('.card');
+  const last = cards[cards.length - 1];
+  if (last) {
+    last.addEventListener('animationend', () => {
+      menuRoot.classList.remove('menu-intro');
+    }, { once: true });
+  }
+}
+
 function setStats(text) {
   const el = document.getElementById('statsBar');
-  if (el) el.textContent = text;
+  if (!el) return;
+  if (el.textContent !== text) {
+    el.textContent = text;
+    bumpNumber(el);
+  }
 }
 
 // Нормализация букв: верхний регистр + Ё → Е
 const normalizeWord = (s) => String(s).toUpperCase().replace(/Ё/g, 'Е');
 
-// ★ Сколько задач в текущей сессии (5 для Шульте на время, иначе 10)
+// ★ Сколько задач в текущей сессии
 function getTaskTotal() {
   if (state.mode !== 'timed') return TASK_COUNT;
   if (state.category === 'schulte')   return 3;
@@ -105,15 +149,13 @@ function getModeDesc(modeId, category, difficulty) {
     return 'Без таймера, до выхода';
   }
 
-  // Режим «На время» для Шульте: 5 задач
   if (category === 'schulte') {
     const perTask = difficulty === 1 ? 30
-                  : difficulty === 2 ? 45
+                  : difficulty === 2 ? 40
                   : 60;
     return `3 задачи · ${perTask} сек на каждую`;
   }
 
-  // Режим «На время» для Мат-сетки: 3 задачи, время больше обычного
   if (category === 'math_grid') {
     const perTask = difficulty === 1 ? 120
                   : difficulty === 2 ? 180
@@ -124,7 +166,7 @@ function getModeDesc(modeId, category, difficulty) {
   return `${TASK_COUNT} задач · ${TIME_PER_TASK} сек на каждую`;
 }
 
-// ---------- Локальная "API" (замена fetch) ----------
+// ---------- Локальная "API" ----------
 async function fetchTasks(count) {
   return generateTasks({
     category:   state.category,
@@ -133,7 +175,6 @@ async function fetchTasks(count) {
   });
 }
 
-// Словарь берётся из глобального массива DICTIONARY_WORDS (dictionary.js).
 let wordSetPromise = null;
 
 function loadWords() {
@@ -249,6 +290,14 @@ function showMenu() {
   });
 
   document.getElementById('startBtn').onclick = startGame;
+
+  // Стагер по всем карточкам меню (только для одноразового интро)
+  stagger(modes, '.card');
+  stagger(cats,  '.card');
+  stagger(diffs, '.card');
+
+  // Вход меню — только один раз за сессию
+  playMenuIntroOnce(screen);
 }
 
 // ---------- Старт сессии ----------
@@ -360,9 +409,10 @@ function renderTask(task) {
   } else if (task.type === 'choice') {
     const wrap = document.createElement('div');
     wrap.className = 'options';
-    task.options.forEach(opt => {
+    task.options.forEach((opt, i) => {
       const b = document.createElement('button');
       b.className = 'option';
+      b.style.setProperty('--i', i);
       b.textContent = opt;
       b.onclick = () => submit(opt, b);
       wrap.appendChild(b);
@@ -409,6 +459,7 @@ function renderGridClick(task, area) {
   });
 
   area.appendChild(wrap);
+  stagger(wrap, '.click-cell');
 }
 
 function renderSchulteTask(task) {
@@ -466,6 +517,8 @@ function renderSchulteTask(task) {
     gridEl.appendChild(btn);
   });
 
+  stagger(gridEl, '.schulte-cell');
+
   function onCellClick(num, btn) {
     if (finished || state.locked) return;
     if (btn.disabled) return;
@@ -500,7 +553,6 @@ function renderSchulteTask(task) {
 }
 
 // ---------- Задачи на память ----------
-
 function renderMemoryTask(task) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
@@ -561,7 +613,9 @@ function renderMemoryContent(mem) {
   }
   if (mem.kind === 'grid') {
     const cells = mem.cells
-      .map(c => `<div class="memory-cell${c ? '' : ' empty'}">${c || ''}</div>`)
+      .map((c, i) =>
+        `<div class="memory-cell${c ? '' : ' empty'}" style="--i:${i}">${c || ''}</div>`
+      )
       .join('');
     return `<div class="memory-grid" style="grid-template-columns:repeat(${mem.size},1fr)">
       ${cells}
@@ -611,9 +665,10 @@ function renderMemoryAnswerPhase(task) {
     if (task.options && task.options.length) {
       const wrap = document.createElement('div');
       wrap.className = 'options';
-      task.options.forEach(opt => {
+      task.options.forEach((opt, i) => {
         const b = document.createElement('button');
         b.className = 'option';
+        b.style.setProperty('--i', i);
         b.textContent = opt;
         b.onclick = () => submit(opt, b);
         wrap.appendChild(b);
@@ -649,13 +704,11 @@ function renderMemoryAnswerPhase(task) {
 }
 
 // ---------- Math Grid ----------
-
 function renderMathGridTask(task) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
   state.locked = false;
 
-  // ★ Кастомное время для режима «На время» (45 / 60 / 90 сек)
   if (state.mode === 'timed') {
     task.timeOverride = task.difficulty === 1 ? 120
                       : task.difficulty === 2 ? 180
@@ -674,7 +727,6 @@ function renderMathGridTask(task) {
   const showSum = task.difficulty === 1;
   const headClass = showSum ? 'mg-row-head' : 'mg-row-head mg-row-head--nosum';
 
-  // ★ Таймер и счётчик задач для режима «На время»
   const isTimed = state.mode === 'timed';
   const total = getTaskTotal();
   const current = state.answered + 1;
@@ -727,10 +779,10 @@ function renderMathGridTask(task) {
     }, 400);
   }
 
-  const gridEl        = document.getElementById('mathGrid');
-  const targetEl      = document.getElementById('mgTarget');
-  const sumEl         = document.getElementById('mgSum');
-  const feedback      = document.getElementById('feedback');
+  const gridEl   = document.getElementById('mathGrid');
+  const targetEl = document.getElementById('mgTarget');
+  const sumEl    = document.getElementById('mgSum');
+  const feedback = document.getElementById('feedback');
 
   CELLS.forEach((num, i) => {
     const b = document.createElement('button');
@@ -741,6 +793,8 @@ function renderMathGridTask(task) {
     b.onclick = () => onCellClick(i, b);
     gridEl.appendChild(b);
   });
+
+  stagger(gridEl, '.mg-cell');
 
   const cellEls = Array.from(gridEl.children);
 
@@ -862,12 +916,10 @@ function renderMathGridTask(task) {
   updateUI();
   setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 
-  // ★ Запускаем таймер в режиме «На время»
   if (isTimed) startTimer();
 }
 
 // ---------- Wordle ----------
-
 function renderWordleTask(task) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   stopTimer();
@@ -1101,10 +1153,12 @@ function renderWordleTask(task) {
       state.score += points;
       feedback.className = 'feedback ok';
       feedback.textContent = `Угадали за ${attempts.length} попыток! +${points} очков`;
+      flashScreen('ok');
     } else {
       state.streak = 0;
       feedback.className = 'feedback err';
       feedback.textContent = `Не угадали. Слово: ${TARGET}`;
+      flashScreen('err');
     }
     setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 
@@ -1129,6 +1183,10 @@ function renderWordleTask(task) {
 // ---------- Таймер ----------
 function startTimer() {
   stopTimer();
+
+  const timerEl = document.querySelector('.timer');
+  if (timerEl) timerEl.classList.remove('danger');
+
   const override = state.current && state.current.timeOverride;
   state.timeLeft = override || TIME_PER_TASK;
   const el = document.getElementById('time');
@@ -1137,6 +1195,7 @@ function startTimer() {
   state.timerId = setInterval(() => {
     state.timeLeft--;
     if (el) el.textContent = state.timeLeft;
+    if (timerEl) timerEl.classList.toggle('danger', state.timeLeft <= 5);
     if (state.timeLeft <= 0) {
       stopTimer();
       submit(null);
@@ -1191,7 +1250,7 @@ function submit(value, btnEl) {
     state.streak = 0;
     if (btnEl) btnEl.classList.add('wrong');
     feedback.className = 'feedback err';
-     if (task.type === 'schulte') {
+    if (task.type === 'schulte') {
       feedback.textContent = 'Время вышло';
     } else {
       feedback.textContent = value === null
@@ -1205,6 +1264,8 @@ function submit(value, btnEl) {
       showNextButton();
     }
   }
+
+  flashScreen(isCorrect ? 'ok' : 'err');
 
   setStats(`Очки: ${state.score} · Стрик: ${state.streak}`);
 
@@ -1278,7 +1339,7 @@ function endGame() {
     <div class="result">
       <h1>Готово!</h1>
       <p class="sub">${modeLabel} · уровень ${state.difficulty}</p>
-      <div class="score">${state.score}</div>
+      <div class="score" id="finalScore">${state.score}</div>
       <div class="row">Правильных: ${state.correct} / ${state.answered} (${accuracy}%)</div>
       <div class="row">Лучший стрик: ${state.bestStreak}</div>
       <div class="row">Рекорд в этом режиме: ${getBest(state.category, state.difficulty, state.mode)}</div>
@@ -1288,6 +1349,9 @@ function endGame() {
       </div>
     </div>
   `;
+
+  const fs = document.getElementById('finalScore');
+  if (fs) fs.classList.add('bump');
 
   document.getElementById('again').onclick = startGame;
   document.getElementById('menu').onclick = showMenu;
